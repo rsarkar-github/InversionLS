@@ -6,7 +6,7 @@ import sys
 import shutil
 import json
 from ..Solver.ScatteringIntegralLinearIncreasingVel import TruncatedKernelLinearIncreasingVel2d
-from ...Utilities.JsonTools import write_json, update_json
+from ...Utilities.JsonTools import update_json
 from ...Utilities import TypeChecker
 
 
@@ -68,7 +68,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             self._state = int(self._params["state"])
         else:
             self._state = 0
-            write_json(filename=self._param_file, key="state", val=self._state)
+            update_json(filename=self._param_file, key="state", val=self._state)
 
         # This call checks if restart_code can be applied, and resets self._state
         self.__check_restart_mode()
