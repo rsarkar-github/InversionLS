@@ -20,5 +20,5 @@ def update_json(filename, key, val):
 
     file_data[key] = val
 
-    with open(filename, "w") as jsonFile:
+    with open(filename, "w") as file:
         json.dump(file_data, file)
