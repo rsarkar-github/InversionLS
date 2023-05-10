@@ -312,9 +312,9 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             path = self.__greens_func_filename(i=i)
             linvel2d.write_green_func(green_func_file=path)
 
-            self._state += 1
-            update_json(filename=self._param_file, key="state", val=self._state)
-            self.__print_reset_state_msg()
+        self._state += 1
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
 
     def print_params(self):
 
