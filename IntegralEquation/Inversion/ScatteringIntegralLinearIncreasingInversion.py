@@ -301,7 +301,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             linvel2d.set_parameters(
                 n=self._n,
                 nz=self._nz,
-                k=self._k_values[i],
+                k=float(self._k_values[i]),
                 a=self._a,
                 b=self._b,
                 m=self._m,
