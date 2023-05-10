@@ -20,6 +20,7 @@ def write_json(filename, key, val):
         file_data[key] = val
         file.seek(0)
         json.dump(file_data, file, indent=4)
+        file.truncate()
 
 def update_json(filename, key, val):
     """
@@ -40,3 +41,4 @@ def update_json(filename, key, val):
         file_data[key] = val
         file.seek(0)
         json.dump(file_data, file, indent=4)
+        file.truncate()

@@ -266,7 +266,7 @@ if __name__ == "__main__":
     basedir_ = "InversionLS/Expt/test0/"
     obj = ScatteringIntegralLinearIncreasingInversion2d(
         basedir=basedir_,
-        restart=True,
+        restart=False,
         restart_code=0
     )
     obj.print_params()
