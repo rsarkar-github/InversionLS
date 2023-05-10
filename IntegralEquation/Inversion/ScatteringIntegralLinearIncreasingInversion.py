@@ -250,19 +250,65 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def add_sources_gaussian(self, num_sources, amplitude_list, source_coord_list, std_list):
+    def add_sources_gaussian(self, num_sources, amplitude_list, source_coords, std_list):
         """
         Automatically create Gaussian sources
 
         :param num_sources: int
-            Number of sources
-        :param amplitude_list: List or 1D numpy array of complex numbers
-            List of amplitudes (must be of size self._num_k_values)
-        :param source_coord_list: List or
-        :param std_list: List or 1D numpy array of floats
-            Standard deviation of Gaussian
+            Number of sources.
+        :param amplitude_list: 1D numpy array of complex numbers
+            List of amplitudes. Must be of shape (self._num_k_values,).
+        :param source_coords: 2D numpy array of floats
+            Source coordinates (centers of Gaussians). Must be of shape (num_sources, 2).
+        :param std_list: 1D numpy array of floats
+            Standard deviation of Gaussian. Must be of shape (num_sources,).
         :return:
         """
+        if self._state != 1:
+            print(
+                "\nOperation not allowed. Need self._state = 1, but obtained self._state = ", self._state
+            )
+            return
+
+        # Check parameters
+        TypeChecker.check_int_positive(num_sources)
+        TypeChecker.check_ndarray(
+            x=amplitude_list,
+            shape=(self._num_k_values,),
+            dtypes=self._precision,
+            nan_inf=True
+        )
+        TypeChecker.check_ndarray(
+            x=source_coords,
+            shape=(num_sources, 2),
+            dtypes=(np.float32, np.float64),
+            nan_inf=True
+        )
+        TypeChecker.check_ndarray(
+            x=std_list,
+            shape=(num_sources, 2),
+            dtypes=(np.float32, np.float64),
+            nan_inf=True
+        )
+
+        # Create Gaussians
+        source_list = []
+        for i in range(self._num_k_values):
+            # TODO
+            x = np.zeros(shape=(num_sources, self._nz, self._n), dtype=self._precision)
+            source_list.append(x)
+
+        # Write to file
+        for i in range(self._num_k_values):
+            path = self.__source_filename(i=i)
+            np.savez(path, source_list[i])
+
+        self._num_sources = num_sources
+        self._source_list = source_list
+
+        self._state += 1
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
 
     def print_params(self):
 
