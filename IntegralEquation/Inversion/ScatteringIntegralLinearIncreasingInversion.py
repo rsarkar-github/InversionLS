@@ -69,10 +69,10 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         else:
             self._state = 0
             write_json(filename=self._param_file, key="state", val=self._state)
-        print("state = ", self._state, ", ", self.__state_code(self._state))
 
         # This call checks if restart_code can be applied, and resets self._state
         self.__check_restart_mode()
+        print("state = ", self._state, ", ", self.__state_code(self._state))
 
         # ----------------------------------------------------
         # Initialize full list of members
@@ -144,6 +144,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         np.savez(path, self._k_values)
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
 
     def add_sources(self, num_sources, source_list):
         raise NotImplementedError
@@ -253,6 +254,12 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             except OSError as e:
                 print("Error: %s - %s." % (e.filename, e.strerror))
 
+    def __print_reset_state_msg(self):
+
+        print("\n\n---------------------------------------------")
+        print("---------------------------------------------")
+        print("Resetting state:\n")
+        print("state = ", self._state, ", ", self.__state_code(self._state))
 
 if __name__ == "__main__":
 
