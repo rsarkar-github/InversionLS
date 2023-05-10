@@ -139,7 +139,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
                     TypeChecker.check_ndarray(
                         x=x,
                         shape=(num_sources, self._nz, self._n),
-                        dtypes=self._precision,
+                        dtypes=(self._precision,),
                         nan_inf=True
                     )
                     self._source_list.append(x)
@@ -185,7 +185,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
     @property
     def m(self):
         return self._m
-    
+
     @property
     def k_values(self):
         return self._k_values
@@ -262,7 +262,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             TypeChecker.check_ndarray(
                 x=source_list[i],
                 shape=(num_sources, self._nz, self._n),
-                dtypes=self._precision,
+                dtypes=(self._precision,),
                 nan_inf=True
             )
 
@@ -303,7 +303,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         TypeChecker.check_ndarray(
             x=amplitude_list,
             shape=(self._num_k_values,),
-            dtypes=self._precision,
+            dtypes=(self._precision,),
             nan_inf=True
         )
         TypeChecker.check_ndarray(
