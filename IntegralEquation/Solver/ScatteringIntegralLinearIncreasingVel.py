@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 class TruncatedKernelLinearIncreasingVel3d:
 
-    def __init__(self, n, nz, k, a, b, m, precision, light_mode=False):
+    def __init__(self, n, nz, k, a, b, m, precision, verbose=False, light_mode=False):
         """
         :param n: The field will have shape n x n x nz, with n odd. This means that the cube
         [-0.5, 0.5]^2 is gridded into n^2 points. The points have coordinates {-0.5 + k/(n-1) : 0 <= k <= n-1}.
@@ -22,6 +22,7 @@ class TruncatedKernelLinearIncreasingVel3d:
         :param b: The domain in z direction is [a, b] with 0 < a < b.
         :param m: Number of points to use in Riemann sum calculator for FT of truncated kernel.
         :param precision: np.complex64 or np.complex128
+        :param verbose: bool (if True print messages during Green's function calculation).
         :param light_mode: bool (if True an empty class is initialized)
         """
 
@@ -49,6 +50,8 @@ class TruncatedKernelLinearIncreasingVel3d:
             if precision not in [np.complex64, np.complex128]:
                 raise TypeError("Only precision types numpy.complex64 or numpy.complex128 are supported")
 
+            TypeChecker.check(x=verbose, expected_type=(bool,))
+
             self._n = n
             self._nz = nz
             self._k = k
@@ -56,13 +59,14 @@ class TruncatedKernelLinearIncreasingVel3d:
             self._b = b
             self._m = m
             self._precision = precision
+            self._verbose = verbose
 
             self._cutoff = np.sqrt(2.0)
 
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, k, a, b, m, precision, green_func=None):
+    def set_parameters(self, n, nz, k, a, b, m, precision, verbose=False, green_func=None):
         """
         :param n: The field will have shape n x n x nz, with n odd. This means that the cube
         [-0.5, 0.5]^2 is gridded into n^2 points. The points have coordinates {-0.5 + k/(n-1) : 0 <= k <= n-1}.
@@ -73,6 +77,7 @@ class TruncatedKernelLinearIncreasingVel3d:
         :param b: The domain in z direction is [a, b] with 0 < a < b.
         :param m: Number of points to use in Riemann sum calculator for FT of truncated kernel.
         :param precision: np.complex64 or np.complex128
+        :param verbose: bool (if True print messages during Green's function calculation).
         :param green_func: np.ndarray of dtype precision of size nz x nz x (2n - 1) x (2n - 1) or None
         """
 
@@ -95,6 +100,8 @@ class TruncatedKernelLinearIncreasingVel3d:
         if precision not in [np.complex64, np.complex128]:
             raise TypeError("Only precision types numpy.complex64 or numpy.complex128 are supported")
 
+        TypeChecker.check(x=verbose, expected_type=(bool,))
+
         self._n = n
         self._nz = nz
         self._k = k
@@ -102,6 +109,7 @@ class TruncatedKernelLinearIncreasingVel3d:
         self._b = b
         self._m = m
         self._precision = precision
+        self._verbose = verbose
 
         self._cutoff = np.sqrt(2.0)
 
@@ -286,17 +294,19 @@ class TruncatedKernelLinearIncreasingVel3d:
 
     @staticmethod
     @numba.jit(nopython=True, parallel=True)
-    def __green_func_calc(green_func, nz, m, z, r, bessel0, k):
+    def __green_func_calc(green_func, nz, m, z, r, bessel0, k, verbose=False):
 
         j = complex(0, 1)
         nu = j * np.sqrt(k ** 2 - 0.25)
         cutoff = np.sqrt(2.0)
         r_scaled = cutoff * r
 
-        print("Total z slices = ", nz, "\n")
+        if verbose:
+            print("Total z slices = ", nz, "\n")
         for j1 in numba.prange(nz):
 
-            print("Starting slice number = ", j1 + 1)
+            if verbose:
+                print("Starting slice number = ", j1 + 1)
             for j2 in range(j1, nz):
 
                 if j1 != j2:
@@ -324,7 +334,8 @@ class TruncatedKernelLinearIncreasingVel3d:
                     green_func[j1, j2, :, :] *= (-1.0 / m)
                     green_func[j2, j1, :, :] = green_func[j1, j2, :, :]
 
-            print("Finished slice number = ", j1 + 1)
+            if verbose:
+                print("Finished slice number = ", j1 + 1)
 
     def __calculate_green_func(self):
         t1 = time.time()
@@ -343,7 +354,8 @@ class TruncatedKernelLinearIncreasingVel3d:
             z=self._zgrid,
             r=r,
             bessel0=bessel0,
-            k=self._k
+            k=self._k,
+            verbose=self._verbose
         )
 
         t2 = time.time()
@@ -388,7 +400,7 @@ class TruncatedKernelLinearIncreasingVel3d:
 
 class TruncatedKernelLinearIncreasingVel2d:
 
-    def __init__(self, n, nz, k, a, b, m, precision, light_mode=False):
+    def __init__(self, n, nz, k, a, b, m, precision, verbose=False, light_mode=False):
         """
         :param n: The field will have shape n x nz, with n odd. This means that the unit cube
         [-0.5, 0.5] is gridded into n points. The points have coordinates {-0.5 + k/(n-1) : 0 <= k <= n-1}.
@@ -399,6 +411,7 @@ class TruncatedKernelLinearIncreasingVel2d:
         :param b: The domain in z direction is [a, b] with 0 < a < b.
         :param m: Number of points to use in Riemann sum calculator for FT of truncated kernel.
         :param precision: np.complex64 or np.complex128
+        :param verbose: bool (if True print messages during Green's function calculation).
         :param light_mode: bool (if True an empty class is initialized)
         """
 
@@ -426,6 +439,8 @@ class TruncatedKernelLinearIncreasingVel2d:
             if precision not in [np.complex64, np.complex128]:
                 raise TypeError("Only precision types numpy.complex64 or numpy.complex128 are supported")
 
+            TypeChecker.check(x=verbose, expected_type=(bool,))
+
             self._n = n
             self._nz = nz
             self._k = k
@@ -433,13 +448,14 @@ class TruncatedKernelLinearIncreasingVel2d:
             self._b = b
             self._m = m
             self._precision = precision
+            self._verbose = verbose
 
             self._cutoff = np.sqrt(1.0)
 
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, k, a, b, m, precision, green_func=None):
+    def set_parameters(self, n, nz, k, a, b, m, precision, verbose=False, green_func=None):
         """
         :param n: The field will have shape n x nz, with n odd. This means that the unit cube
         [-0.5, 0.5] is gridded into n points. The points have coordinates {-0.5 + k/(n-1) : 0 <= k <= n-1}.
@@ -450,6 +466,7 @@ class TruncatedKernelLinearIncreasingVel2d:
         :param b: The domain in z direction is [a, b] with 0 < a < b.
         :param m: Number of points to use in Riemann sum calculator for FT of truncated kernel.
         :param precision: np.complex64 or np.complex128
+        :param verbose: bool (if True print messages during Green's function calculation).
         :param green_func: np.ndarray of dtype precision of size nz x nz x (2n - 1) or None
         """
 
@@ -472,6 +489,8 @@ class TruncatedKernelLinearIncreasingVel2d:
         if precision not in [np.complex64, np.complex128]:
             raise TypeError("Only precision types numpy.complex64 or numpy.complex128 are supported")
 
+        TypeChecker.check(x=verbose, expected_type=(bool,))
+
         self._n = n
         self._nz = nz
         self._k = k
@@ -479,6 +498,7 @@ class TruncatedKernelLinearIncreasingVel2d:
         self._b = b
         self._m = m
         self._precision = precision
+        self._verbose = verbose
 
         self._cutoff = np.sqrt(1.0)
 
@@ -642,16 +662,18 @@ class TruncatedKernelLinearIncreasingVel2d:
 
     @staticmethod
     @numba.jit(nopython=True, parallel=True)
-    def __green_func_calc(green_func, nz, m, z, r, cos, k):
+    def __green_func_calc(green_func, nz, m, z, r, cos, k, verbose=False):
 
         j = complex(0, 1)
         nu = j * np.sqrt(k ** 2 - 0.25)
         lamb = nu - 0.5
 
-        print("Total z slices = ", nz, "\n")
+        if verbose:
+            print("Total z slices = ", nz, "\n")
         for j1 in numba.prange(nz):
 
-            print("Starting slice number = ", j1 + 1)
+            if verbose:
+                print("Starting slice number = ", j1 + 1)
             for j2 in range(j1, nz):
 
                 f1 = z[j1] * z[j2]
@@ -664,7 +686,8 @@ class TruncatedKernelLinearIncreasingVel2d:
                 green_func[j1, j2, :] *= (-1.0 / (np.pi * m))
                 green_func[j2, j1, :] = green_func[j1, j2, :]
 
-            print("Finished slice number = ", j1 + 1)
+            if verbose:
+                print("Finished slice number = ", j1 + 1)
 
     def __calculate_green_func(self):
         t1 = time.time()
@@ -682,7 +705,8 @@ class TruncatedKernelLinearIncreasingVel2d:
             z=self._zgrid,
             r=r,
             cos=cos.astype(dtype=np.complex128),
-            k=self._k
+            k=self._k,
+            verbose=self._verbose
         )
 
         t2 = time.time()

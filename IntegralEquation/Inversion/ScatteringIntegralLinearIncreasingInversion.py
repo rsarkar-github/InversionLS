@@ -82,9 +82,9 @@ class ScatteringIntegralLinearIncreasingInversion2d:
 
         self._k_values = None
         self._num_k_values = None
-
         self._num_sources = None
         self._source_list = None
+        self._true_model_pert = None
 
         self.__run_initializer()
 
@@ -135,6 +135,10 @@ class ScatteringIntegralLinearIncreasingInversion2d:
     @property
     def state(self):
         return self._state
+
+    @property
+    def true_model_pert(self):
+        return self._true_model_pert
 
     def add_k_values(self, k_values_list):
         """
@@ -316,6 +320,36 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
+    def add_true_model_pert(self, model_pert):
+        """
+        Add true model perturbation
+        :param model_pert: 2D numpy array of floats
+            True model perturbation in slowness squared about background model. Must have shape (self._nz, self._n).
+        :return:
+        """
+        if self._state != 3:
+            print(
+                "\nOperation not allowed. Need self._state = 3, but obtained self._state = ", self._state
+            )
+            return
+
+        # Check parameters
+        TypeChecker.check_ndarray(
+            x=model_pert,
+            shape=(self._nz, self._n),
+            dtypes=(np.float32,),
+            nan_inf=True
+        )
+
+        # Write to file
+        path = self.__true_model_pert_filename()
+        np.savez(path, model_pert)
+        self._true_model_pert = model_pert
+
+        self._state += 1
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
+
     def print_params(self):
 
         # TODO: Update as class develops
@@ -352,7 +386,11 @@ class ScatteringIntegralLinearIncreasingInversion2d:
     def __greens_func_filename(self, i):
         return self._basedir + "greens_func/" + str(i) + ".npz"
 
-    def __state_code(self, state):
+    def __true_model_pert_filename(self):
+        return self._basedir + "data/true_model_pert.npz"
+
+    @staticmethod
+    def __state_code(state):
 
         if state == 0:
             return "Empty object. Nothing created."
@@ -363,10 +401,12 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         elif state == 3:
             return "Green's functions created."
         elif state == 4:
-            return "True data computed."
+            return "True model perturbation set."
         elif state == 5:
-            return "Initial perturbation and wave fields set."
+            return "True data computed."
         elif state == 6:
+            return "Initial perturbation and wave fields set."
+        elif state == 7:
             return "Inversion started."
 
     def __check_restart_mode(self):
@@ -511,15 +551,31 @@ class ScatteringIntegralLinearIncreasingInversion2d:
                     if x.shape != (self._nz, self._nz, 2 * (self._n - 1) + 1):
                         raise ValueError("Green's function shape does not match.")
 
-                print("Checking Green's functions shpes: OK")
+                print("Checking Green's functions shapes: OK")
 
             if self._state >= 4:
-                pass
+
+                path = self.__true_model_pert_filename()
+                true_model_pert = np.load(path)["arr_0"]
+
+                TypeChecker.check_ndarray(
+                    x=true_model_pert,
+                    shape=(self._nz, self._n),
+                    dtypes=(np.float32,),
+                    nan_inf=True
+                )
+
+                self._true_model_pert = true_model_pert
+
+                print("Checking true model perturbation: OK")
 
             if self._state >= 5:
                 pass
 
             if self._state >= 6:
+                pass
+
+            if self._state >= 7:
                 pass
 
 
