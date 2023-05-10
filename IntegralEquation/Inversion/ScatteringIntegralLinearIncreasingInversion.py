@@ -52,10 +52,13 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         # Precision for calculation of Green's functions
         if self._params["precision"] == "float":
             self._precision = np.complex64
+            self._precision_real = np.float32
         elif self._params["precision"] == "double":
             self._precision = np.complex128
+            self._precision_real = np.float64
         else:
             self._precision = np.complex64
+            self._precision_real = np.float32
 
         # Green's function related group
         self._m = int(self._params["green's func"]["m"])
@@ -76,8 +79,12 @@ class ScatteringIntegralLinearIncreasingInversion2d:
 
         # ----------------------------------------------------
         # Initialize full list of members
+
         self._k_values = None
         self._num_k_values = None
+
+        self._num_sources = None
+        self._source_list = None
 
         # ----------------------------------------------------
         # Assume restart = False
@@ -105,8 +112,51 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         # Assume restart = True
         elif self._restart is True:
 
+            print("\n\n---------------------------------------------")
+            print("---------------------------------------------")
+            print("Initializing class members:\n")
+
             # Clean based on self._state
             self.__clean(self._state)
+
+            # Initialize class members
+            if self._state >= 1:
+
+                path = self.__k_values_filename()
+                self._k_values = np.load(path)["arr_0"]
+                self._num_k_values = self._k_values.shape[0]
+
+            if self._state >= 2:
+
+                path = self.__source_filename(i=0)
+                x = np.load(path)["arr_0"]
+                num_sources = x.shape[0]
+
+                self._source_list = []
+                for i in range(self._num_k_values):
+                    path = self.__source_filename(i=i)
+                    x = np.load(path)["arr_0"]
+                    TypeChecker.check_ndarray(
+                        x=x,
+                        shape=(num_sources, self._nz, self._n),
+                        dtypes=self._precision,
+                        nan_inf=True
+                    )
+                    self._source_list.append(x)
+
+                self._num_sources = num_sources
+
+            if self._state >= 3:
+                pass
+
+            if self._state >= 4:
+                pass
+
+            if self._state >= 5:
+                pass
+
+            if self._state >= 6:
+                pass
 
     @property
     def k_values(self):
@@ -115,6 +165,14 @@ class ScatteringIntegralLinearIncreasingInversion2d:
     @property
     def num_k_values(self):
         return self._num_k_values
+
+    @property
+    def source_list(self):
+        return self._source_list
+
+    @property
+    def num_sources(self):
+        return self._num_sources
 
     @property
     def state(self):
@@ -126,9 +184,9 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             list of k-values for inversion
         :return:
         """
-        if self._state >= 1:
+        if self._state != 0:
             print(
-                "\nOperation not allowed. Need self._state < 1, but obtained self._state = ", self._state
+                "\nOperation not allowed. Need self._state = 0, but obtained self._state = ", self._state
             )
             return
 
@@ -140,14 +198,71 @@ class ScatteringIntegralLinearIncreasingInversion2d:
 
         self._num_k_values = self._k_values.shape[0]
 
-        path = self._basedir + "k-values.npz"
+        path = self.__k_values_filename()
         np.savez(path, self._k_values)
+
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
     def add_sources(self, num_sources, source_list):
-        raise NotImplementedError
+        """
+        :param num_sources: int
+            Number of sources
+        :param source_list: list of numpy arrays
+            List of 3D numpy arrays of shape (num_sources, self._nz, self._n).
+            Length of list = self._num_k_values
+        :return:
+        """
+        if self._state != 1:
+            print(
+                "\nOperation not allowed. Need self._state = 1, but obtained self._state = ", self._state
+            )
+            return
+
+        # Check parameters
+        TypeChecker.check_int_positive(num_sources)
+
+        if len(source_list) != self._num_k_values:
+            print(
+                "Length of list required (self._num_k_values) = ", self._num_k_values,
+                ", but obtained = ", len(source_list)
+            )
+            return
+
+        for i in range(self._num_k_values):
+            TypeChecker.check_ndarray(
+                x=source_list[i],
+                shape=(num_sources, self._nz, self._n),
+                dtypes=self._precision,
+                nan_inf=True
+            )
+
+        # Write to file
+        for i in range(self._num_k_values):
+            path = self.__source_filename(i=i)
+            np.savez(path, source_list[i])
+
+        self._num_sources = num_sources
+        self._source_list = source_list
+
+        self._state += 1
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
+
+    def add_sources_gaussian(self, num_sources, amplitude_list, source_coord_list, std_list):
+        """
+        Automatically create Gaussian sources
+
+        :param num_sources: int
+            Number of sources
+        :param amplitude_list: List or 1D numpy array of complex numbers
+            List of amplitudes (must be of size self._num_k_values)
+        :param source_coord_list: List or
+        :param std_list: List or 1D numpy array of floats
+            Standard deviation of Gaussian
+        :return:
+        """
 
     def print_params(self):
 
@@ -175,6 +290,12 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         print("\n---------------------------------------------")
         print("Green's functions related parameters\n")
         print("State : ", self._m)
+
+    def __k_values_filename(self):
+        return self._basedir + "k-values.npz"
+
+    def __source_filename(self, i):
+        return self._basedir + "sources/" + str(i) + ".npz"
 
     def __state_code(self, state):
 
@@ -261,13 +382,14 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         print("Resetting state:\n")
         print("state = ", self._state, ", ", self.__state_code(self._state))
 
+
 if __name__ == "__main__":
 
     basedir_ = "InversionLS/Expt/test0/"
     obj = ScatteringIntegralLinearIncreasingInversion2d(
         basedir=basedir_,
-        restart=False,
-        restart_code=0
+        restart=True,
+        restart_code=None
     )
     obj.print_params()
 
