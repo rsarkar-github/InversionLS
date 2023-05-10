@@ -86,77 +86,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         self._num_sources = None
         self._source_list = None
 
-        # ----------------------------------------------------
-        # Assume restart = False
-        if self._restart is False:
-
-            # Clean based on restart_code
-            self.__clean(self._state)
-
-            # Create directories
-            dir_list = [
-                "green_func/",
-                "iterations/",
-                "sources/",
-                "data/"
-            ]
-            for item in dir_list:
-                path = basedir + item
-                if not os.path.exists(path):
-                    os.makedirs(path)
-                elif len(os.listdir(path)) > 0:
-                    raise ValueError(
-                        "restart=False not allowed as " + os.path.abspath(path) + " is not empty."
-                    )
-
-        # Assume restart = True
-        elif self._restart is True:
-
-            print("\n\n---------------------------------------------")
-            print("---------------------------------------------")
-            print("Initializing class members:\n")
-
-            # Clean based on self._state
-            self.__clean(self._state)
-
-            # Initialize class members
-            if self._state >= 1:
-
-                path = self.__k_values_filename()
-                self._k_values = np.load(path)["arr_0"]
-                self._num_k_values = self._k_values.shape[0]
-
-            if self._state >= 2:
-
-                path = self.__source_filename(i=0)
-                x = np.load(path)["arr_0"]
-                num_sources = x.shape[0]
-
-                self._source_list = []
-                for i in range(self._num_k_values):
-                    path = self.__source_filename(i=i)
-                    x = np.load(path)["arr_0"]
-                    TypeChecker.check_ndarray(
-                        x=x,
-                        shape=(num_sources, self._nz, self._n),
-                        dtypes=(self._precision,),
-                        nan_inf=True
-                    )
-                    self._source_list.append(x)
-
-                self._num_sources = num_sources
-
-            if self._state >= 3:
-                pass
-
-            if self._state >= 4:
-                pass
-
-            if self._state >= 5:
-                pass
-
-            if self._state >= 6:
-                pass
+        self.__run_initializer()
 
     @property
     def n(self):
@@ -338,6 +268,54 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
+    def calculate_greens_func(self):
+        """
+        Calculate Green's functions and write to disk
+        :return:
+        """
+        if self._state != 2:
+            print(
+                "\nOperation not allowed. Need self._state = 2, but obtained self._state = ", self._state
+            )
+            return
+
+        linvel2d = TruncatedKernelLinearIncreasingVel2d(
+            n=self._n,
+            nz=self._nz,
+            k=100,
+            a=self._a,
+            b=self._b,
+            m=self._m,
+            precision=self._precision,
+            light_mode=True
+        )
+
+        # Perform calculation
+        for i in range(self._num_k_values):
+
+            # Print message
+            print("\n\n---------------------------------------------")
+            print("---------------------------------------------")
+            print("Starting Green's function calculation for k = " + "{:6.3f}".format(self._k_values[i]) + "\n")
+
+            linvel2d.set_parameters(
+                n=self._n,
+                nz=self._nz,
+                k=self._k_values[i],
+                a=self._a,
+                b=self._b,
+                m=self._m,
+                precision=self._precision,
+                green_func=None
+            )
+
+            path = self.__greens_func_filename(i=i)
+            linvel2d.write_green_func(green_func_file=path)
+
+            self._state += 1
+            update_json(filename=self._param_file, key="state", val=self._state)
+            self.__print_reset_state_msg()
+
     def print_params(self):
 
         # TODO: Update as class develops
@@ -363,13 +341,16 @@ class ScatteringIntegralLinearIncreasingInversion2d:
 
         print("\n---------------------------------------------")
         print("Green's functions related parameters\n")
-        print("State : ", self._m)
+        print("m: ", self._m)
 
     def __k_values_filename(self):
         return self._basedir + "k-values.npz"
 
     def __source_filename(self, i):
         return self._basedir + "sources/" + str(i) + ".npz"
+
+    def __greens_func_filename(self, i):
+        return self._basedir + "greens_func/" + str(i) + ".npz"
 
     def __state_code(self, state):
 
@@ -415,13 +396,13 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         if state in [0, 1]:
             dir_list = [
                 "sources/",
-                "green_func/",
+                "greens_func/",
                 "data/",
                 "iterations/"
             ]
         if state == 2:
             dir_list = [
-                "green_func/",
+                "greens_func/",
                 "data/",
                 "iterations/"
             ]
@@ -455,6 +436,91 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         print("---------------------------------------------")
         print("Resetting state:\n")
         print("state = ", self._state, ", ", self.__state_code(self._state))
+
+    def __run_initializer(self):
+
+        # ----------------------------------------------------
+        # Assume restart = False
+        if self._restart is False:
+
+            # Clean based on restart_code
+            self.__clean(self._state)
+
+            # Create directories
+            dir_list = [
+                "greens_func/",
+                "iterations/",
+                "sources/",
+                "data/"
+            ]
+            for item in dir_list:
+                path = self._basedir + item
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                elif len(os.listdir(path)) > 0:
+                    raise ValueError(
+                        "restart=False not allowed as " + os.path.abspath(path) + " is not empty."
+                    )
+
+        # Assume restart = True
+        elif self._restart is True:
+
+            print("\n\n---------------------------------------------")
+            print("---------------------------------------------")
+            print("Initializing class members:\n")
+
+            # Clean based on self._state
+            self.__clean(self._state)
+
+            # Initialize class members
+            if self._state >= 1:
+
+                path = self.__k_values_filename()
+                self._k_values = np.load(path)["arr_0"]
+                self._num_k_values = self._k_values.shape[0]
+
+                print("Checking k values array: OK")
+
+            if self._state >= 2:
+
+                path = self.__source_filename(i=0)
+                x = np.load(path)["arr_0"]
+                num_sources = x.shape[0]
+
+                self._source_list = []
+                for i in range(self._num_k_values):
+                    path = self.__source_filename(i=i)
+                    x = np.load(path)["arr_0"]
+                    TypeChecker.check_ndarray(
+                        x=x,
+                        shape=(num_sources, self._nz, self._n),
+                        dtypes=(self._precision,),
+                        nan_inf=True
+                    )
+                    self._source_list.append(x)
+
+                self._num_sources = num_sources
+
+                print("Checking sources: OK")
+
+            if self._state >= 3:
+
+                for i in range(self._num_k_values):
+                    path = self.__greens_func_filename(i=i)
+                    x = np.load(path)["arr_0"]
+                    if x.shape != (self._nz, self._nz, 2 * (self._n - 1) + 1):
+                        raise ValueError("Green's function shape does not match.")
+
+                print("Checking Green's functions shpes: OK")
+
+            if self._state >= 4:
+                pass
+
+            if self._state >= 5:
+                pass
+
+            if self._state >= 6:
+                pass
 
 
 if __name__ == "__main__":
