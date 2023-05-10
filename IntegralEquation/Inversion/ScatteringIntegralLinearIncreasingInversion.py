@@ -175,6 +175,18 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         return self._b
 
     @property
+    def precision(self):
+        return self._precision
+
+    @property
+    def precision_real(self):
+        return self._precision_real
+
+    @property
+    def m(self):
+        return self._m
+    
+    @property
     def k_values(self):
         return self._k_values
 
