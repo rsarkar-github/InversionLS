@@ -272,7 +272,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def calculate_greens_func(self):
+    def calculate_greens_func(self, verbose=False):
         """
         Calculate Green's functions and write to disk
         :return:
@@ -283,6 +283,8 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             )
             return
 
+        TypeChecker.check(x=verbose, expected_type=(bool,))
+
         linvel2d = TruncatedKernelLinearIncreasingVel2d(
             n=self._n,
             nz=self._nz,
@@ -291,6 +293,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             b=self._b,
             m=self._m,
             precision=self._precision,
+            verbose=False,
             light_mode=True
         )
 
@@ -310,6 +313,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
                 b=self._b,
                 m=self._m,
                 precision=self._precision,
+                verbose=verbose,
                 green_func=None
             )
 
