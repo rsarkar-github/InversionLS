@@ -14,9 +14,6 @@ class ScatteringIntegralLinearIncreasingInversion2d:
 
     def __init__(self, basedir, restart=False, restart_code=None):
         """
-        If restart = True, read parameters from a parameter file in basedir.
-        Otherwise, all parameters except restart must be provided.
-
         Always read parameters from .json file.
         Name of parameter file is basedir + "params.json"
 
@@ -108,7 +105,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
         # Assume restart = True
         elif self._restart is True:
 
-            # Clean based on restart_code
+            # Clean based on self._state
             self.__clean(self._state)
 
     @property
@@ -145,7 +142,8 @@ class ScatteringIntegralLinearIncreasingInversion2d:
 
         path = self._basedir + "k-values.npz"
         np.savez(path, self._k_values)
-        update_json(filename=self._param_file, key="state", val=1)
+        self._state += 1
+        update_json(filename=self._param_file, key="state", val=self._state)
 
     def add_sources(self, num_sources, source_list):
         raise NotImplementedError
@@ -209,6 +207,12 @@ class ScatteringIntegralLinearIncreasingInversion2d:
                 else:
                     self._state = self._restart_code
 
+        else:
+            self._state = 0
+
+        # Update .json file
+        update_json(filename=self._param_file, key="state", val=self._state)
+
     def __clean(self, state):
 
         dir_list = []
@@ -252,7 +256,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
 
 if __name__ == "__main__":
 
-    basedir_ = "Inversion-LS/Expt/test0/"
+    basedir_ = "InversionLS/Expt/test0/"
     obj = ScatteringIntegralLinearIncreasingInversion2d(
         basedir=basedir_,
         restart=True,
@@ -260,6 +264,6 @@ if __name__ == "__main__":
     )
     obj.print_params()
 
-    # k_vals_list_ = [90.0, 92.0, 94.0, 96.0, 98.0, 100.0]
-    # obj.add_k_values(k_values_list=k_vals_list_)
-    # print(obj.k_values)
+    k_vals_list_ = [90.0, 92.0, 94.0, 96.0, 98.0, 100.0]
+    obj.add_k_values(k_values_list=k_vals_list_)
+    print(obj.k_values)
