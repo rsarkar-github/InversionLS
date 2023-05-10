@@ -159,6 +159,22 @@ class ScatteringIntegralLinearIncreasingInversion2d:
                 pass
 
     @property
+    def n(self):
+        return self._n
+
+    @property
+    def nz(self):
+        return self._nz
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
     def k_values(self):
         return self._k_values
 
