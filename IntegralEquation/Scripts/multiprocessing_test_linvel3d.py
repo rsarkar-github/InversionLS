@@ -19,7 +19,8 @@ op = Lipp3d(
     a=a_,
     b=b_,
     m=m_,
-    precision=precision_
+    precision=precision_,
+    verbose=True
 )
 
 
