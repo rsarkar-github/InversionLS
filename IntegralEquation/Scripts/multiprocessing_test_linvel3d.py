@@ -20,7 +20,8 @@ op = Lipp3d(
     b=b_,
     m=m_,
     precision=precision_,
-    verbose=True
+    verbose=True,
+    light_mode=True
 )
 
 
@@ -37,6 +38,18 @@ if __name__ == "__main__":
     u_ = np.zeros(shape=(nz_, n_, n_), dtype=precision_)
     u_[int(nz_ / 8), int(n_ / 2), int(n_ / 2)] = 1.0
     output = u_ * 0
+
+    op.set_parameters(
+        n=n_,
+        nz=nz_,
+        k=k_,
+        a=a_,
+        b=b_,
+        m=m_,
+        precision=precision_,
+        verbose=True,
+        green_func=None
+    )
 
     ntimes = 20
     arglist = [(u_ * 1.0, output * 1.0) for _ in range(ntimes)]
