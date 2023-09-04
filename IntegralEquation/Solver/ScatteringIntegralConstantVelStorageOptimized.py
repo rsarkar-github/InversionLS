@@ -3,7 +3,7 @@ import numba
 import scipy.special as sp
 import scipy.fft as scfft
 import time
-from ...Utilities import TypeChecker
+from ..Utilities import TypeChecker
 import matplotlib.pyplot as plt
 
 
@@ -369,13 +369,13 @@ class TruncatedKernelConstantVel2d:
                     f2 = kabs * cutoff
                     f3 = -1.0 - 0.5 * j * np.pi * (f2 * sp.jv(1, f2) *
                                                    sp.hankel1(0, f1) - f1 * sp.jv(0, f2) * sp.hankel1(1, f1))
-                    green_func[i1, i2] = f3 / ((k - kabs) * (k + kabs))
+                    green_func[i1, i2] = -f3 / ((k - kabs) * (k + kabs))
 
                 else:
                     f2 = f1 * (sp.jv(1, f1) * sp.hankel1(1, f1) -
                                sp.jv(2, f1) * sp.hankel1(0, f1))
                     f3 = 2 * sp.jv(1, f1) * sp.hankel1(0, f1)
-                    green_func[i1, i2] = 0.5 * j * np.pi * cutoff * (f2 + f3) / (k + kabs)
+                    green_func[i1, i2] = -0.5 * j * np.pi * cutoff * (f2 + f3) / (k + kabs)
 
     def __calculate_green_func(self):
 
