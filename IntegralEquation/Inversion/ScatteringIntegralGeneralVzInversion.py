@@ -587,7 +587,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 if __name__ == "__main__":
 
     basedir_ = "InversionLS/Expt/test0/"
-    obj = ScatteringIntegralLinearIncreasingInversion2d(
+    obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir_,
         restart=True,
         restart_code=None

@@ -63,7 +63,7 @@ class ScatteringIntegralLinearIncreasingInversion2d:
             self._precision_real = np.float32
 
         # Green's function related group
-        self._m = int(self._params["green's func"]["m"])
+        self._m = int(self._params["green func"]["m"])
 
         # Initialize state
         print("\n\n---------------------------------------------")

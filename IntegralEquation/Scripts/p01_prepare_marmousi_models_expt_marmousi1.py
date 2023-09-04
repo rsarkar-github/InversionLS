@@ -3,6 +3,7 @@ from scipy.interpolate import RegularGridInterpolator
 import matplotlib.pyplot as plt
 from ...Utilities.Utils import cosine_taper_2d
 
+
 if __name__ == "__main__":
 
     # Load Marmousi
@@ -98,6 +99,9 @@ if __name__ == "__main__":
     vp_interp = func_interp(vp)
     vp_vz_interp = func_interp(vp_vz)
 
+    vp_interp = vp_interp.astype(np.float32)
+    vp_vz_interp = vp_vz_interp.astype(np.float32)
+
     extent = [0, (nx_new - 1) * dx1, (nz_new - 1) * dz1, 0]
     plot(vel=vp_interp, extent=extent, title="Marmousi-2 model")
     plot(
@@ -122,6 +126,7 @@ if __name__ == "__main__":
     vp_diff = vp_interp - vp_vz_interp
     vp_diff1 = vp_diff[skip:nz_new - skip, skip:nx_new - skip] * 1.0
     cosine_taper_2d(array2d=vp_diff1, ncells_pad_x=20, ncells_pad_z=20)
+    vp_diff1 = vp_diff1.astype(np.float32)
     vp_diff *= 0
     vp_diff[skip:nz_new - skip, skip:nx_new - skip] += vp_diff1
 
@@ -133,5 +138,6 @@ if __name__ == "__main__":
     )
 
     # Write files vp_vz to disk
-    np.savez("InversionLS/Data/marmousi-vp-vz-interp.npz", vp_vz_interp)
+    np.savez("InversionLS/Data/marmousi-vp-vz-interp.npz", vp_vz_interp[:, 0])
+    np.savez("InversionLS/Data/marmousi-vp-vz-interp-2d.npz", vp_vz_interp)
     np.savez("InversionLS/Data/marmousi-vp-interp-compact.npz", vp_vz_interp + vp_diff)
