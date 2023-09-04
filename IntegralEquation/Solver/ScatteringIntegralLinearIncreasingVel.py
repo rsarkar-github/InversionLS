@@ -4,7 +4,7 @@ import numba
 import scipy.special as sp
 import time
 import sys
-from ..Utilities import TypeChecker
+from ...Utilities import TypeChecker
 from . import SpecialFunc
 import matplotlib.pyplot as plt
 

@@ -7,7 +7,7 @@ import numpy as np
 import scipy.fft as scfft
 import scipy.special as sp
 
-from ..Utilities import TypeChecker
+from ...Utilities import TypeChecker
 
 
 class TruncatedKernelConstantVel3d:

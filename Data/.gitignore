@@ -2,3 +2,5 @@
 !.gitignore
 !sigsbee.npz
 !marmousi-vp.npz
+!marmousi-vp-interp-compact.npz
+!marmousi-vp-vz-interp.npz

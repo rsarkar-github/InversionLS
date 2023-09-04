@@ -5,14 +5,13 @@ import os
 import sys
 import shutil
 import json
-from ..Solver.ScatteringIntegralLinearIncreasingVel import TruncatedKernelLinearIncreasingVel2d
+from ..Solver.ScatteringIntegralGeneralVz import TruncatedKernelGeneralVz2d
 from ...Utilities.JsonTools import update_json
 from ...Utilities import TypeChecker
 
 
-# TODO: Incomplete
 
-class ScatteringIntegralLinearIncreasingInversion2d:
+class ScatteringIntegralGeneralVzInversion2d:
 
     def __init__(self, basedir, restart=False, restart_code=None):
         """
