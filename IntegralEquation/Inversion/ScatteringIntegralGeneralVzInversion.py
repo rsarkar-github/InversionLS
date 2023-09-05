@@ -5,10 +5,42 @@ import os
 import sys
 import shutil
 import json
+import multiprocessing as mp
+from multiprocessing import Pool
+from tqdm import tqdm
 from ..Solver.ScatteringIntegralGeneralVz import TruncatedKernelGeneralVz2d
 from ...Utilities.JsonTools import update_json
 from ...Utilities import TypeChecker
 
+
+def green_func_calculate_mp_helper_func(params):
+
+    n_ = params[0]
+    nz_ = params[1]
+    a_ = params[2]
+    b_ = params[3]
+    k_ = params[4]
+    vz_ = params[5]
+    m_ = params[6]
+    sigma_ = params[7]
+    precision_ = params[8]
+    green_func_dir_ = params[9]
+    num_threads_ = params[10]
+
+    TruncatedKernelGeneralVz2d(
+        n=n_,
+        nz=nz_,
+        a=a_,
+        b=b_,
+        k=k_,
+        vz=vz_,
+        m=m_,
+        sigma=sigma_,
+        precision=precision_,
+        green_func_dir=green_func_dir_,
+        num_threads=num_threads_,
+        verbose=False
+    )
 
 
 class ScatteringIntegralGeneralVzInversion2d:
@@ -34,7 +66,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             self._restart_code = restart_code
 
         # Read parameters from .json file
-        self._param_file = basedir + "params.json"
+        self._param_file = os.path.join(basedir, "params.json")
         print("---------------------------------------------")
         print("---------------------------------------------")
         print("Reading parameter file:\n")
@@ -62,7 +94,13 @@ class ScatteringIntegralGeneralVzInversion2d:
             self._precision_real = np.float32
 
         # Green's function related group
-        self._m = int(self._params["green's func"]["m"])
+        self._m = int(self._params["greens func"]["m"])
+        self._sigma_greens_func = float(self._params["greens func"]["sigma"])
+        self._num_threads_greens_func_calc = int(self._params["greens func"]["num threads"])
+
+        file_name = self._params["greens func"]["vz file path"]
+        with np.load(file_name) as f:
+            self._vz = np.reshape(f["arr_0"], newshape=(self._nz, 1))
 
         # Initialize state
         print("\n\n---------------------------------------------")
@@ -118,6 +156,14 @@ class ScatteringIntegralGeneralVzInversion2d:
         return self._m
 
     @property
+    def sigma_greens_func(self):
+        return self._sigma_greens_func
+
+    @property
+    def num_threads_greens_func_calc(self):
+        return self._num_threads_greens_func_calc
+
+    @property
     def k_values(self):
         return self._k_values
 
@@ -157,7 +203,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             self._k_values = np.squeeze(np.array(k_values_list, dtype=np.float32))
 
         if type(k_values_list) is np.ndarray:
-            self._k_values = np.squeeze(k_values_list, dtype=np.float32)
+            self._k_values = np.squeeze(k_values_list).astype(np.float32)
 
         self._num_k_values = self._k_values.shape[0]
 
@@ -249,22 +295,34 @@ class ScatteringIntegralGeneralVzInversion2d:
         )
         TypeChecker.check_ndarray(
             x=std_list,
-            shape=(num_sources, 2),
+            shape=(num_sources,),
             dtypes=(np.float32, np.float64),
             nan_inf=True
         )
 
         # Create Gaussians
+        zgrid = np.linspace(start=self._a, stop=self._b, num=self._nz, endpoint=True)
+        xgrid = np.linspace(start=-0.5, stop=0.5, num=self._n, endpoint=True)
+        zg, xg = np.meshgrid(zgrid, xgrid, indexing="ij")
+
         source_list = []
-        for i in range(self._num_k_values):
-            # TODO
-            x = np.zeros(shape=(num_sources, self._nz, self._n), dtype=self._precision)
-            source_list.append(x)
+        x = np.zeros(shape=(num_sources, self._nz, self._n), dtype=np.float32)
+
+        for source_num in range(num_sources):
+            coord_z = source_coords[source_num, 0]
+            coord_x = source_coords[source_num, 1]
+            sou = np.exp(-0.5 * ((zg - coord_z) ** 2 + (xg - coord_x) ** 2) / (std_list[source_num] ** 2))
+            x[source_num, :, :] += sou
+
+        for kk in range(self._num_k_values):
+            y = x * amplitude_list[kk]
+            y = y.astype(self._precision)
+            source_list.append(y)
 
         # Write to file
-        for i in range(self._num_k_values):
-            path = self.__source_filename(i=i)
-            np.savez(path, source_list[i])
+        for kk in range(self._num_k_values):
+            path = self.__source_filename(i=kk)
+            np.savez(path, source_list[kk])
 
         self._num_sources = num_sources
         self._source_list = source_list
@@ -273,7 +331,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def calculate_greens_func(self, verbose=False):
+    def calculate_greens_func(self):
         """
         Calculate Green's functions and write to disk
         :return:
@@ -284,42 +342,29 @@ class ScatteringIntegralGeneralVzInversion2d:
             )
             return
 
-        TypeChecker.check(x=verbose, expected_type=(bool,))
-
-        linvel2d = TruncatedKernelLinearIncreasingVel2d(
-            n=self._n,
-            nz=self._nz,
-            k=100,
-            a=self._a,
-            b=self._b,
-            m=self._m,
-            precision=self._precision,
-            verbose=False,
-            light_mode=True
-        )
-
         # Perform calculation
-        for i in range(self._num_k_values):
+        param_tuple_list = [
+            (
+                self._n,
+                self._nz,
+                self._a,
+                self._b,
+                self._k_values[i],
+                self._vz,
+                self._m,
+                self._sigma_greens_func,
+                self._precision,
+                self.__greens_func_filedir(i=i),
+                self._num_threads_greens_func_calc,
+            ) for i in range(self._num_k_values)
+        ]
 
-            # Print message
-            print("\n\n---------------------------------------------")
-            print("---------------------------------------------")
-            print("Starting Green's function calculation for k = " + "{:6.3f}".format(self._k_values[i]) + "\n")
+        with Pool(min(len(param_tuple_list), mp.cpu_count(), 10)) as pool:
+            max_ = len(param_tuple_list)
 
-            linvel2d.set_parameters(
-                n=self._n,
-                nz=self._nz,
-                k=float(self._k_values[i]),
-                a=self._a,
-                b=self._b,
-                m=self._m,
-                precision=self._precision,
-                verbose=verbose,
-                green_func=None
-            )
-
-            path = self.__greens_func_filename(i=i)
-            linvel2d.write_green_func(green_func_file=path)
+            with tqdm(total=max_) as pbar:
+                for _ in pool.imap_unordered(green_func_calculate_mp_helper_func, param_tuple_list):
+                    pbar.update()
 
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
@@ -380,19 +425,8 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         print("\n---------------------------------------------")
         print("Green's functions related parameters\n")
-        print("m: ", self._m)
-
-    def __k_values_filename(self):
-        return self._basedir + "k-values.npz"
-
-    def __source_filename(self, i):
-        return self._basedir + "sources/" + str(i) + ".npz"
-
-    def __greens_func_filename(self, i):
-        return self._basedir + "greens_func/" + str(i) + ".npz"
-
-    def __true_model_pert_filename(self):
-        return self._basedir + "data/true_model_pert.npz"
+        for key in self._params["greens func"].keys():
+            print(key, ": ", self._params["greens func"][key])
 
     @staticmethod
     def __state_code(state):
@@ -414,6 +448,13 @@ class ScatteringIntegralGeneralVzInversion2d:
         elif state == 7:
             return "Inversion started."
 
+    def __print_reset_state_msg(self):
+
+        print("\n\n---------------------------------------------")
+        print("---------------------------------------------")
+        print("Resetting state:\n")
+        print("state = ", self._state, ", ", self.__state_code(self._state))
+
     def __check_restart_mode(self):
 
         if self._restart is True:
@@ -434,53 +475,6 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         # Update .json file
         update_json(filename=self._param_file, key="state", val=self._state)
-
-    def __clean(self, state):
-
-        dir_list = []
-        if state in [0, 1]:
-            dir_list = [
-                "sources/",
-                "greens_func/",
-                "data/",
-                "iterations/"
-            ]
-        if state == 2:
-            dir_list = [
-                "greens_func/",
-                "data/",
-                "iterations/"
-            ]
-        if state == 3:
-            dir_list = [
-                "data/",
-                "iterations/"
-            ]
-        if state in [4, 5]:
-            dir_list = [
-                "iterations/"
-            ]
-
-        for item in dir_list:
-            path = self._basedir + item
-            try:
-                shutil.rmtree(path)
-            except OSError as e:
-                print("Error: %s - %s." % (e.filename, e.strerror))
-
-        if state == 0:
-            path = self._basedir + "k-values.npz"
-            try:
-                os.remove(path)
-            except OSError as e:
-                print("Error: %s - %s." % (e.filename, e.strerror))
-
-    def __print_reset_state_msg(self):
-
-        print("\n\n---------------------------------------------")
-        print("---------------------------------------------")
-        print("Resetting state:\n")
-        print("state = ", self._state, ", ", self.__state_code(self._state))
 
     def __run_initializer(self):
 
@@ -582,6 +576,61 @@ class ScatteringIntegralGeneralVzInversion2d:
 
             if self._state >= 7:
                 pass
+
+    def __k_values_filename(self):
+        return os.path.join(self._basedir, "k-values.npz")
+
+    def __source_filename(self, i):
+        return os.path.join(self._basedir, "sources/" + str(i) + ".npz")
+
+    def __greens_func_filename(self, i):
+        return os.path.join(self._basedir, "greens_func/" + str(i) + "/green_func.npz")
+
+    def __greens_func_filedir(self, i):
+        return os.path.join(self._basedir, "greens_func/" + str(i))
+
+    def __true_model_pert_filename(self):
+        return os.path.join(self._basedir, "data/true_model_pert.npz")
+
+    def __clean(self, state):
+
+        dir_list = []
+        if state in [0, 1]:
+            dir_list = [
+                "sources/",
+                "greens_func/",
+                "data/",
+                "iterations/"
+            ]
+        if state == 2:
+            dir_list = [
+                "greens_func/",
+                "data/",
+                "iterations/"
+            ]
+        if state == 3:
+            dir_list = [
+                "data/",
+                "iterations/"
+            ]
+        if state in [4, 5]:
+            dir_list = [
+                "iterations/"
+            ]
+
+        for item in dir_list:
+            path = self._basedir + item
+            try:
+                shutil.rmtree(path)
+            except OSError as e:
+                print("Error: %s - %s." % (e.filename, e.strerror))
+
+        if state == 0:
+            path = self._basedir + "k-values.npz"
+            try:
+                os.remove(path)
+            except OSError as e:
+                print("Error: %s - %s." % (e.filename, e.strerror))
 
 
 if __name__ == "__main__":
