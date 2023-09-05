@@ -18,4 +18,8 @@ if __name__ == "__main__":
     print("Compute true data...")
     print("\n")
 
-    obj.compute_true_data(num_procs=obj.num_sources)
+    num_procs = obj.num_sources
+    max_iter = 200
+    tol = 1e-6
+    verbose = False
+    obj.compute_true_data(num_procs=obj.num_sources, max_iter=max_iter, tol=tol, verbose=verbose)

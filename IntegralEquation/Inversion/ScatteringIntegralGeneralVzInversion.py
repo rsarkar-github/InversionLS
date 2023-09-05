@@ -66,6 +66,9 @@ def true_data_calculate_mp_helper_func(params):
     num_source_ = int(params[12])
     source_filename_ = str(params[13])
     true_pert_filename_ = str(params[14])
+    max_iter_ = int(params[15])
+    tol_ = float(params[16])
+    verbose_ = bool(params[17])
 
     # ------------------------------------------------------
     # Create Lippmann-Schwinger operator
@@ -143,24 +146,40 @@ def true_data_calculate_mp_helper_func(params):
 
     # ------------------------------------------------------
     # Solve for solution
-    tol = 1e-6
     start_t = time.time()
-    sol, exitcode = gmres(
-        linop_lse,
-        np.reshape(rhs_, newshape=(nz_ * n_, 1)),
-        maxiter=4000,
-        restart=4000,
-        atol=0,
-        tol=tol,
-        callback=make_callback()
-    )
-    true_data_[num_source_, :, :] += np.reshape(sol, newshape=(nz_, n_))
-    end_t = time.time()
-    print(
-        "Shot num = ", num_source_,
-        ", Total time to solve: ", "{:4.2f}".format(end_t - start_t), " s",
-        ", Exitcode = ", exitcode
-    )
+    if verbose_:
+        sol, exitcode = gmres(
+            linop_lse,
+            np.reshape(rhs_, newshape=(nz_ * n_, 1)),
+            maxiter=max_iter_,
+            restart=max_iter_,
+            atol=0,
+            tol=tol_,
+            callback=make_callback()
+        )
+        true_data_[num_source_, :, :] += np.reshape(sol, newshape=(nz_, n_))
+        end_t = time.time()
+        print(
+            "Shot num = ", num_source_,
+            ", Total time to solve: ", "{:4.2f}".format(end_t - start_t), " s",
+            ", Exitcode = ", exitcode
+        )
+    else:
+        sol, exitcode = gmres(
+            linop_lse,
+            np.reshape(rhs_, newshape=(nz_ * n_, 1)),
+            maxiter=max_iter_,
+            restart=max_iter_,
+            atol=0,
+            tol=tol_
+        )
+        true_data_[num_source_, :, :] += np.reshape(sol, newshape=(nz_, n_))
+        end_t = time.time()
+        print(
+            "Shot num = ", num_source_,
+            ", Total time to solve: ", "{:4.2f}".format(end_t - start_t), " s",
+            ", Exitcode = ", exitcode
+        )
 
     # ------------------------------------------------------
     # Release shared memory
@@ -466,6 +485,8 @@ class ScatteringIntegralGeneralVzInversion2d:
     def calculate_greens_func(self, num_procs):
         """
         Calculate Green's functions and write to disk
+        :param num_procs: int
+            Number of threads for multiprocessing.
         :return:
         """
 
@@ -534,9 +555,31 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def compute_true_data(self, num_procs):
+    def compute_true_data(self, num_procs, max_iter=2000, tol=1e-6, verbose=True):
+        """
+        Compute the true data.
+
+        :param num_procs: int
+            Number of threads for multiprocessing.
+        :param max_iter: int
+            Maximum number of iterations for GMRES solver.
+        :param tol: float
+            Tolerance to use for GMRES solver.
+        :param verbose: bool
+            Whether to print detailed messages during GMRES.
+        :return:
+        """
+
+        if self._state != 4:
+            print(
+                "\nOperation not allowed. Need self._state = 4, but obtained self._state = ", self._state
+            )
+            return
 
         TypeChecker.check_int_positive(x=num_procs)
+        TypeChecker.check_int_positive(x=max_iter)
+        TypeChecker.check_float_positive(x=tol)
+        TypeChecker.check(x=verbose, expected_type=(bool,))
 
         # Loop over k values
         for k in range(self._num_k_values):
@@ -559,7 +602,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
                 # Create shared memory for computed true data
                 sm1 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
-                data1 = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm.buf)
+                data1 = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm1.buf)
                 data1 *= 0
 
                 param_tuple_list = [
@@ -578,7 +621,10 @@ class ScatteringIntegralGeneralVzInversion2d:
                         sm1.name,
                         i,
                         self.__source_filename(i=k),
-                        self.__true_model_pert_filename()
+                        self.__true_model_pert_filename(),
+                        max_iter,
+                        tol,
+                        verbose
                     ) for i in range(self._num_sources)
                 ]
 
@@ -593,6 +639,34 @@ class ScatteringIntegralGeneralVzInversion2d:
                 np.savez(self.__true_data_filename(i=k), data1)
 
             print("\n\n")
+
+    def get_true_data(self, num_k, num_source):
+        """
+        Get true data. Follows 0 based indexing.
+
+        :param num_k: int
+            k value number
+        :param num_source: int
+            Source number
+
+        :return: np.ndarray of shape (self._nz, self._n)
+            Source for k value num_k, and source number num_source.
+        """
+        if self._state >= 5:
+            print(
+                "\nOperation not allowed. Need self._state >= 5, but obtained self._state = ", self._state
+            )
+            return
+
+        TypeChecker.check_int_bounds(x=num_k, lb=0, ub=self._num_k_values - 1)
+        TypeChecker.check_int_bounds(x=num_source, lb=0, ub=self._num_sources - 1)
+
+        true_data_filename = self.__true_data_filename(i=num_k)
+
+        with np.load(true_data_filename) as f:
+            true_data = f["arr_0"][num_source, :, :]
+
+        return true_data
 
     def print_params(self):
 
