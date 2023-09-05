@@ -541,6 +541,10 @@ class ScatteringIntegralGeneralVzInversion2d:
         # Loop over k values
         for k in range(self._num_k_values):
 
+            print("\n\n---------------------------------------------")
+            print("---------------------------------------------")
+            print("Starting k number ", k)
+
             # Create and load Green's function into shared memory
             with SharedMemoryManager() as smm:
 
@@ -587,6 +591,8 @@ class ScatteringIntegralGeneralVzInversion2d:
 
                 # Write computed data to disk
                 np.savez(self.__true_data_filename(i=k), data1)
+
+            print("\n\n")
 
     def print_params(self):
 
