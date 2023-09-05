@@ -23,14 +23,27 @@ if __name__ == "__main__":
     with np.load(os.path.join(basedir, "vp_true_2d.npz")) as data:
         vp_compact = data["arr_0"]
 
-    phi = (1.0 / (vp_vz ** 2.0)) - (1.0 / (vp_compact ** 2.0))
+    psi = (1.0 / (vp_vz ** 2.0)) - (1.0 / (vp_compact ** 2.0))
 
     xmax = 1.0
     zmax = (obj.b - obj.a)
-    extent = [0, xmax, zmax, 0]
-    plt.imshow(phi, cmap="Greys", extent=extent)
-    plt.colorbar()
-    plt.show()
-    plt.savefig(os.path.join(basedir, "phi.pdf"), format="pdf", bbox_inches="tight", pad_inches=0.01)
+    extent = [0, 5 * xmax, 5 * zmax, 0]
 
-    obj.add_true_model_pert(model_pert=phi)
+    def plot(psi, extent, title, file_name=None):
+        fig = plt.figure(figsize=(6, 3))  # define figure size
+        image = plt.imshow(psi, cmap="Greys", interpolation='nearest', extent=extent)
+
+        cbar = plt.colorbar(aspect=10, pad=0.02)
+        cbar.set_label('[s' + r'$^2 /$' + 'km' + r'$^2$' +']', labelpad=10)
+        plt.title(title)
+        plt.xlabel('x [km]')
+        plt.ylabel('z [km]')
+
+        if file_name is not None:
+            plt.savefig(file_name, format="pdf", bbox_inches="tight", pad_inches=0.01)
+
+        plt.show()
+
+    plot(psi, extent, "True perturbation", os.path.join(basedir, "psi.pdf"))
+
+    obj.add_true_model_pert(model_pert=psi)

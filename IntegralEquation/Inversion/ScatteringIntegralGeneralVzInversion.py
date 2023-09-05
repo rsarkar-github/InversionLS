@@ -654,9 +654,9 @@ class ScatteringIntegralGeneralVzInversion2d:
             Source number
 
         :return: np.ndarray of shape (self._nz, self._n)
-            Source for k value num_k, and source number num_source.
+            True data for k value num_k, and source number num_source.
         """
-        if self._state >= 5:
+        if self._state < 5:
             print(
                 "\nOperation not allowed. Need self._state >= 5, but obtained self._state = ", self._state
             )
@@ -751,7 +751,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
 
     def __run_initializer(self):
-
+        # TODO: Needs to be updated as class progresses
         # ----------------------------------------------------
         # Assume restart = False
         if self._restart is False:
@@ -843,7 +843,21 @@ class ScatteringIntegralGeneralVzInversion2d:
                 print("Checking true model perturbation: OK")
 
             if self._state >= 5:
-                pass
+
+                for i in range(self._num_k_values):
+
+                    path = self.__true_data_filename(i=i)
+                    with np.load(path) as f:
+                        true_data_k = f["arr_0"]
+
+                    TypeChecker.check_ndarray(
+                        x=true_data_k,
+                        shape=(self._num_sources, self._nz, self._n),
+                        dtypes=(self._precision,),
+                        nan_inf=True
+                    )
+
+                print("Checking true computed data: OK")
 
             if self._state >= 6:
                 pass

@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     print("Num k values = ", obj.num_k_values, ", Num sources = ", obj.num_sources)
 
-    num_k_val = 10
+    num_k_val = 30
     num_source = 10
 
     data = obj.get_true_data(num_k=num_k_val, num_source=num_source)
