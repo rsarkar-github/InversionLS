@@ -308,6 +308,10 @@ class ScatteringIntegralGeneralVzInversion2d:
         source_list = []
         x = np.zeros(shape=(num_sources, self._nz, self._n), dtype=np.float32)
 
+        print("\n\n---------------------------------------------")
+        print("---------------------------------------------")
+        print("Creating Gaussians...")
+        print("\n")
         for source_num in range(num_sources):
             coord_z = source_coords[source_num, 0]
             coord_x = source_coords[source_num, 1]
@@ -315,11 +319,14 @@ class ScatteringIntegralGeneralVzInversion2d:
             x[source_num, :, :] += sou
 
         for kk in range(self._num_k_values):
+            print("Creating sources for k number ", kk)
             y = x * amplitude_list[kk]
             y = y.astype(self._precision)
             source_list.append(y)
 
         # Write to file
+        print("\n")
+        print("Writing sources to disk...")
         for kk in range(self._num_k_values):
             path = self.__source_filename(i=kk)
             np.savez(path, source_list[kk])
@@ -618,6 +625,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 "iterations/"
             ]
 
+        # Delete all contents in directories
         for item in dir_list:
             path = self._basedir + item
             try:
@@ -625,24 +633,14 @@ class ScatteringIntegralGeneralVzInversion2d:
             except OSError as e:
                 print("Error: %s - %s." % (e.filename, e.strerror))
 
+        # Recreate deleted directories as empty directories
+        for item in dir_list:
+            path = self._basedir + item
+            os.makedirs(path)
+
         if state == 0:
             path = self._basedir + "k-values.npz"
             try:
                 os.remove(path)
             except OSError as e:
                 print("Error: %s - %s." % (e.filename, e.strerror))
-
-
-if __name__ == "__main__":
-
-    basedir_ = "InversionLS/Expt/test0/"
-    obj = ScatteringIntegralGeneralVzInversion2d(
-        basedir=basedir_,
-        restart=True,
-        restart_code=None
-    )
-    obj.print_params()
-
-    k_vals_list_ = [90.0, 92.0, 94.0, 96.0, 98.0, 100.0]
-    obj.add_k_values(k_values_list=k_vals_list_)
-    print(obj.k_values)
