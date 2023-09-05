@@ -39,6 +39,7 @@ def green_func_calculate_mp_helper_func(params):
         precision=precision_,
         green_func_dir=green_func_dir_,
         num_threads=num_threads_,
+        no_mpi=True,
         verbose=False
     )
 
