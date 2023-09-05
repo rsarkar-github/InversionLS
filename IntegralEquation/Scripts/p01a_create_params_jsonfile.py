@@ -39,7 +39,7 @@ if __name__ == "__main__":
     # Set m, sigma, num_threads
     m = 3
     sigma = 3 * (1.0 / nx) / m
-    num_threads = 1
+    num_threads = 10
 
     params = {
         "geometry": {
