@@ -1,12 +1,17 @@
 import numpy as np
+from numpy import ndarray
 import scipy as sp
+from scipy.sparse.linalg import LinearOperator, gmres, lsqr, lsmr
 import matplotlib.pyplot as plt
 import os
 import sys
 import shutil
 import json
+import time
 import multiprocessing as mp
 from multiprocessing import Pool
+from multiprocessing.shared_memory import SharedMemory
+from multiprocessing.managers import SharedMemoryManager
 from tqdm import tqdm
 from ..Solver.ScatteringIntegralGeneralVz import TruncatedKernelGeneralVz2d
 from ...Utilities.JsonTools import update_json
@@ -41,6 +46,126 @@ def green_func_calculate_mp_helper_func(params):
         no_mpi=True,
         verbose=False
     )
+
+
+def true_data_calculate_mp_helper_func(params):
+
+    # Read all parameters
+    n_ = int(params[0])
+    nz_ = int(params[1])
+    a_ = float(params[2])
+    b_ = float(params[3])
+    k_ = float(params[4])
+    vz_ = params[5]
+    m_ = int(params[6])
+    sigma_ = float(params[7])
+    precision_ = params[8]
+    green_func_dir_ = str(params[9])
+    sm_name_ = str(params[10])
+    sm_true_data_name_ = str(params[11])
+    num_source_ = int(params[12])
+    source_filename_ = str(params[13])
+    true_pert_filename_ = str(params[14])
+
+    # ------------------------------------------------------
+    # Create Lippmann-Schwinger operator
+    # Attach to shared memory for Green's function
+
+    op_ = TruncatedKernelGeneralVz2d(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1,
+        no_mpi=True, verbose=False, light_mode=True
+    )
+
+    op_.set_parameters(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1,
+        no_mpi=True, verbose=False
+    )
+
+    sm_ = SharedMemory(sm_name_)
+    data_ = ndarray(shape=(nz_, nz_, 2 * n_ - 1), dtype=precision_, buffer=sm_.buf)
+    op_.greens_func = data_
+
+    # ------------------------------------------------------
+    # Get source, and true perturbation in slowness squared
+
+    with np.load(source_filename_) as f:
+        source_ = f["arr_0"]
+        num_sources_ = source_.shape[0]
+        source_ = source_[num_source_, :, :]
+
+    with np.load(true_pert_filename_) as f:
+        psi_ = f["arr_0"]
+
+    # ------------------------------------------------------
+    # Attach to shared memory for output
+    sm_true_data_ = SharedMemory(sm_true_data_name_)
+    true_data_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_true_data_.buf)
+
+    # ------------------------------------------------------
+    # Define linear operator objects
+    # Compute rhs
+    def func_matvec(v):
+        v = np.reshape(v, newshape=(nz_, n_))
+        u = v * 0
+        op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
+        return np.reshape(v - (k_ ** 2) * u, newshape=(nz_ * n_, 1))
+
+    def func_matvec_adj(v):
+        v = np.reshape(v, newshape=(nz_, n_))
+        u = v * 0
+        op_.apply_kernel(u=v, output=u, adj=True, add=False)
+        return np.reshape(v - (k_ ** 2) * u * psi_, newshape=(nz_ * n_, 1))
+
+    def make_callback():
+        closure_variables = dict(counter=0, residuals=[])
+
+        def callback(residuals):
+            closure_variables["counter"] += 1
+            closure_variables["residuals"].append(residuals)
+            print("Shot num = ", num_source_, ", ", closure_variables["counter"], residuals)
+
+        return callback
+
+    linop_lse = LinearOperator(
+        shape=(nz_ * n_, nz_ * n_),
+        matvec=func_matvec,
+        rmatvec=func_matvec_adj,
+        dtype=precision_
+    )
+
+    rhs_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+    start_t_ = time.time()
+    op_.apply_kernel(u=source_, output=rhs_)
+    end_t_ = time.time()
+    print("Shot num = ", num_source_, ", Time to compute rhs: ", "{:4.2f}".format(end_t_ - start_t_), " s")
+
+    # ------------------------------------------------------
+    # Solve for solution
+    tol = 1e-6
+    start_t = time.time()
+    sol, exitcode = gmres(
+        linop_lse,
+        np.reshape(rhs_, newshape=(nz_ * n_, 1)),
+        maxiter=4000,
+        restart=4000,
+        atol=0,
+        tol=tol,
+        callback=make_callback()
+    )
+    true_data_[num_source_, :, :] += np.reshape(sol, newshape=(nz_, n_))
+    end_t = time.time()
+    print(
+        "Shot num = ", num_source_,
+        ", Total time to solve: ", "{:4.2f}".format(end_t - start_t), " s",
+        ", Exitcode = ", exitcode
+    )
+
+    # ------------------------------------------------------
+    # Release shared memory
+    sm_.close()
+    sm_true_data_.close()
 
 
 class ScatteringIntegralGeneralVzInversion2d:
@@ -409,6 +534,60 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
+    def compute_true_data(self, num_procs):
+
+        TypeChecker.check_int_positive(x=num_procs)
+
+        # Loop over k values
+        for k in range(self._num_k_values):
+
+            # Create and load Green's function into shared memory
+            with SharedMemoryManager() as smm:
+
+                # Create shared memory and load Green's function into it
+                sm = smm.SharedMemory(size=self.__num_bytes_greens_func())
+                data = ndarray(shape=(self._nz, self._nz, 2 * self._n - 1), dtype=self._precision, buffer=sm.buf)
+                data *= 0
+
+                green_func_filename = self.__greens_func_filename(i=k)
+                with np.load(green_func_filename) as f:
+                    data += f["arr_0"]
+
+                # Create shared memory for computed true data
+                sm1 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+                data1 = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm.buf)
+                data1 *= 0
+
+                param_tuple_list = [
+                    (
+                        self._n,
+                        self._nz,
+                        self._a,
+                        self._b,
+                        self._k_values[k],
+                        self._vz,
+                        self._m,
+                        self._sigma_greens_func,
+                        self._precision,
+                        self.__greens_func_filedir(i=k),
+                        sm.name,
+                        sm1.name,
+                        i,
+                        self.__source_filename(i=k),
+                        self.__true_model_pert_filename()
+                    ) for i in range(self._num_sources)
+                ]
+
+                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                    max_ = len(param_tuple_list)
+
+                    with tqdm(total=max_) as pbar:
+                        for _ in pool.imap_unordered(true_data_calculate_mp_helper_func, param_tuple_list):
+                            pbar.update()
+
+                # Write computed data to disk
+                np.savez(self.__true_data_filename(i=k), data1)
+
     def print_params(self):
 
         # TODO: Update as class develops
@@ -437,25 +616,27 @@ class ScatteringIntegralGeneralVzInversion2d:
         for key in self._params["greens func"].keys():
             print(key, ": ", self._params["greens func"][key])
 
-    @staticmethod
-    def __state_code(state):
+    def __num_bytes_greens_func(self):
 
-        if state == 0:
-            return "Empty object. Nothing created."
-        elif state == 1:
-            return "k values initialized."
-        elif state == 2:
-            return "Sources created."
-        elif state == 3:
-            return "Green's functions created."
-        elif state == 4:
-            return "True model perturbation set."
-        elif state == 5:
-            return "True data computed."
-        elif state == 6:
-            return "Initial perturbation and wave fields set."
-        elif state == 7:
-            return "Inversion started."
+        # Calculate num bytes for Green's function
+        num_bytes = self._nz * self._nz * (2 * self._n - 1)
+        if self._precision == np.complex64:
+            num_bytes *= 8
+        if self._precision == np.complex128:
+            num_bytes *= 16
+
+        return num_bytes
+
+    def __num_bytes_true_data_per_k(self):
+
+        # Calculate num bytes for Green's function
+        num_bytes = self._num_sources * self._nz * self._n
+        if self._precision == np.complex64:
+            num_bytes *= 8
+        if self._precision == np.complex128:
+            num_bytes *= 16
+
+        return num_bytes
 
     def __print_reset_state_msg(self):
 
@@ -601,6 +782,9 @@ class ScatteringIntegralGeneralVzInversion2d:
     def __true_model_pert_filename(self):
         return os.path.join(self._basedir, "data/true_model_pert.npz")
 
+    def __true_data_filename(self, i):
+        return os.path.join(self._basedir, "data/" + str(i) + ".npz")
+
     def __clean(self, state):
 
         dir_list = []
@@ -646,3 +830,23 @@ class ScatteringIntegralGeneralVzInversion2d:
                 os.remove(path)
             except OSError as e:
                 print("Error: %s - %s." % (e.filename, e.strerror))
+
+    @staticmethod
+    def __state_code(state):
+
+        if state == 0:
+            return "Empty object. Nothing created."
+        elif state == 1:
+            return "k values initialized."
+        elif state == 2:
+            return "Sources created."
+        elif state == 3:
+            return "Green's functions created."
+        elif state == 4:
+            return "True model perturbation set."
+        elif state == 5:
+            return "True data computed."
+        elif state == 6:
+            return "Initial perturbation and wave fields set."
+        elif state == 7:
+            return "Inversion started."

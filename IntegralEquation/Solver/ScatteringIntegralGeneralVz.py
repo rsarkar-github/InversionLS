@@ -1292,6 +1292,20 @@ class TruncatedKernelGeneralVz2d:
         else:
             return self._green_func
 
+    @greens_func.setter
+    def greens_func(self, green_func):
+
+        if not self._initialized_flag:
+            raise ValueError("Class initialized in light mode, cannot perform operation.")
+
+        TypeChecker.check_ndarray(
+            x=green_func,
+            dtypes=(self._precision,),
+            shape=(self._nz, self._nz, self._num_bins_non_neg)
+        )
+
+        self._green_func = green_func
+
     @property
     def n(self):
         if not self._initialized_flag:
