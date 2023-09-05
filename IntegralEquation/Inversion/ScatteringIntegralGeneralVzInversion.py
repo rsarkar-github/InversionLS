@@ -25,7 +25,6 @@ def green_func_calculate_mp_helper_func(params):
     sigma_ = float(params[7])
     precision_ = params[8]
     green_func_dir_ = str(params[9])
-    num_threads_ = int(params[10])
 
     TruncatedKernelGeneralVz2d(
         n=n_,
@@ -38,7 +37,7 @@ def green_func_calculate_mp_helper_func(params):
         sigma=sigma_,
         precision=precision_,
         green_func_dir=green_func_dir_,
-        num_threads=num_threads_,
+        num_threads=1,
         no_mpi=True,
         verbose=False
     )
@@ -365,8 +364,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 self._m,
                 self._sigma_greens_func,
                 self._precision,
-                self.__greens_func_filedir(i=i),
-                self._num_threads_greens_func_calc,
+                self.__greens_func_filedir(i=i)
             ) for i in range(self._num_k_values)
         ]
 
