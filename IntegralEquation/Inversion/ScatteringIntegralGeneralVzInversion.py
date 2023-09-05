@@ -640,6 +640,10 @@ class ScatteringIntegralGeneralVzInversion2d:
 
             print("\n\n")
 
+        self._state += 1
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
+
     def get_true_data(self, num_k, num_source):
         """
         Get true data. Follows 0 based indexing.
