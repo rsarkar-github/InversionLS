@@ -15,17 +15,17 @@ from ...Utilities import TypeChecker
 
 def green_func_calculate_mp_helper_func(params):
 
-    n_ = params[0]
-    nz_ = params[1]
-    a_ = params[2]
-    b_ = params[3]
-    k_ = params[4]
+    n_ = int(params[0])
+    nz_ = int(params[1])
+    a_ = float(params[2])
+    b_ = float(params[3])
+    k_ = float(params[4])
     vz_ = params[5]
-    m_ = params[6]
-    sigma_ = params[7]
+    m_ = int(params[6])
+    sigma_ = float(params[7])
     precision_ = params[8]
-    green_func_dir_ = params[9]
-    num_threads_ = params[10]
+    green_func_dir_ = str(params[9])
+    num_threads_ = int(params[10])
 
     TruncatedKernelGeneralVz2d(
         n=n_,
@@ -338,11 +338,14 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def calculate_greens_func(self):
+    def calculate_greens_func(self, num_procs):
         """
         Calculate Green's functions and write to disk
         :return:
         """
+
+        TypeChecker.check_int_positive(x=num_procs)
+
         if self._state != 2:
             print(
                 "\nOperation not allowed. Need self._state = 2, but obtained self._state = ", self._state
@@ -366,7 +369,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             ) for i in range(self._num_k_values)
         ]
 
-        with Pool(min(len(param_tuple_list), mp.cpu_count(), 10)) as pool:
+        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
             max_ = len(param_tuple_list)
 
             with tqdm(total=max_) as pbar:
