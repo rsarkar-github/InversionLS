@@ -394,7 +394,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         # Write to file
         for i in range(self._num_k_values):
             path = self.__source_filename(i=i)
-            np.savez(path, source_list[i])
+            np.savez_compressed(path, source_list[i])
 
         self._num_sources = num_sources
         self._source_list = source_list
@@ -473,7 +473,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         print("Writing sources to disk...")
         for kk in range(self._num_k_values):
             path = self.__source_filename(i=kk)
-            np.savez(path, source_list[kk])
+            np.savez_compressed(path, source_list[kk])
 
         self._num_sources = num_sources
         self._source_list = source_list
@@ -542,13 +542,13 @@ class ScatteringIntegralGeneralVzInversion2d:
         TypeChecker.check_ndarray(
             x=model_pert,
             shape=(self._nz, self._n),
-            dtypes=(np.float32,),
+            dtypes=(self._precision_real,),
             nan_inf=True
         )
 
         # Write to file
         path = self.__true_model_pert_filename()
-        np.savez(path, model_pert)
+        np.savez_compressed(path, model_pert)
         self._true_model_pert = model_pert
 
         self._state += 1
@@ -636,7 +636,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                             pbar.update()
 
                 # Write computed data to disk
-                np.savez(self.__true_data_filename(i=k), data1)
+                np.savez_compressed(self.__true_data_filename(i=k), data1)
 
             print("\n\n")
 
@@ -671,6 +671,35 @@ class ScatteringIntegralGeneralVzInversion2d:
             true_data = f["arr_0"][num_source, :, :]
 
         return true_data
+
+    def set_zero_initial_pert_wavefields(self):
+        """
+        Sets zero initial perturbation
+        :return:
+        """
+
+        if self._state != 5:
+            print(
+                "\nOperation not allowed. Need self._state = 5, but obtained self._state = ", self._state
+            )
+            return
+
+        # Set zero initial perturbation
+        model_pert = np.zeros(shape=(self._nz, self._n), dtype=self._precision_real)
+        path = self.__model_pert_filename(iter_count=-1)
+        np.savez_compressed(path, model_pert)
+
+        # Set zero initial wavefields
+        for k in range(self._num_k_values):
+            wavefield = np.zeros(
+                shape=(self._num_sources, self._nz, self._n), dtype=self._precision
+            )
+            path = self.__wavefield_filename(iter_count=-1, i=k)
+            np.savez_compressed(path, wavefield)
+
+        self._state += 1
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
 
     def print_params(self):
 
@@ -834,7 +863,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 TypeChecker.check_ndarray(
                     x=true_model_pert,
                     shape=(self._nz, self._n),
-                    dtypes=(np.float32,),
+                    dtypes=(self._precision_real,),
                     nan_inf=True
                 )
 
@@ -860,7 +889,33 @@ class ScatteringIntegralGeneralVzInversion2d:
                 print("Checking true computed data: OK")
 
             if self._state >= 6:
-                pass
+
+                # Check initial model pert
+                path = self.__model_pert_filename(iter_count=-1)
+                model_pert = np.load(path)["arr_0"]
+
+                TypeChecker.check_ndarray(
+                    x=model_pert,
+                    shape=(self._nz, self._n),
+                    dtypes=(self._precision_real,),
+                    nan_inf=True
+                )
+
+                # Check initial wavefields
+                for i in range(self._num_k_values):
+
+                    path = self.__wavefield_filename(iter_count=-1, i=i)
+                    with np.load(path) as f:
+                        wavefield_k = f["arr_0"]
+
+                    TypeChecker.check_ndarray(
+                        x=wavefield_k,
+                        shape=(self._num_sources, self._nz, self._n),
+                        dtypes=(self._precision,),
+                        nan_inf=True
+                    )
+
+                print("Checking initial model pert and wavefields: OK")
 
             if self._state >= 7:
                 pass
@@ -882,6 +937,20 @@ class ScatteringIntegralGeneralVzInversion2d:
 
     def __true_data_filename(self, i):
         return os.path.join(self._basedir, "data/" + str(i) + ".npz")
+
+    def __model_pert_filename(self, iter_count):
+
+        if iter_count == -1:
+            return os.path.join(self._basedir, "iterations/initial_model_pert.npz")
+        else:
+            return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/model_pert_update.npz")
+
+    def __wavefield_filename(self, iter_count, i):
+
+        if iter_count == -1:
+            return os.path.join(self._basedir, "iterations/initial_wavefield_" + str(i) + ".npz")
+        else:
+            return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/wavefield_" + str(i) + ".npz")
 
     def __clean(self, state):
 

@@ -24,6 +24,7 @@ if __name__ == "__main__":
         vp_compact = data["arr_0"]
 
     psi = (1.0 / (vp_vz ** 2.0)) - (1.0 / (vp_compact ** 2.0))
+    psi = psi.astype(obj.precision_real)
 
     xmax = 1.0
     zmax = (obj.b - obj.a)
