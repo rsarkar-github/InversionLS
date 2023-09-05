@@ -113,6 +113,93 @@ def func_helper2D(params):
         print("Thread num", num_slice, "finished in", "{:6.2f}".format(t_end - t_start), "s")
 
 
+def func_helper2D_no_mpi(
+    green_func,
+    precision,
+    start_index_z,
+    end_index_z,
+    m,
+    cutoff_func,
+    dx,
+    num_slice,
+    green_func_truncated_ft,
+    verbose
+):
+    """
+    Helper function to solve Helmholtz equation in 3D.
+    Compute Fourier transform of truncated kernel.
+
+    :param green_func:(2D numpy.ndarray)
+        Solved Green's functions for the depth slice
+    :param precision: (np.complex64 or np.complex128)
+        precision
+    :param start_index_z: (int)
+        Index for starting extraction in z direction
+    :param end_index_z: (int)
+        Index for ending extraction in z direction
+    :params m: (int)
+        self._m (decimation factor)
+    :param cutoff_func: (np.ndarray)
+        self._cutoff_func_coarse_grid (cutoff function)
+    :param dx: (float)
+        fine grid spacing along x
+    :param num_slice: (int)
+        depth slice number
+    :param green_func_truncated_ft: (str)
+        Numpy ndarray containing the truncated the Green's function
+    :param verbose: (bool)
+        verbose flag
+    """
+
+    t_start = time.time()
+
+    # ------------------------------------------------------------
+    # Extract solution
+
+    t1 = time.time()
+
+    green_func_slice = green_func[start_index_z:end_index_z + 1:m, ::m]
+
+    nz_new = green_func_slice.shape[0]
+    nx_new = cutoff_func.shape[0]
+
+    green_func_slice_truncated = np.zeros(shape=(nz_new, nx_new), dtype=precision)
+    green_func_slice_truncated[:, 0:green_func_slice.shape[1]] = green_func_slice
+
+    t2 = time.time()
+    if verbose:
+        print(
+            "Thread num: ", num_slice, ", Extraction done  in",
+            "{:6.2f}".format(t2 - t1), " s"
+        )
+
+    # ------------------------------------------------------------
+    # Calculate Fourier transform of truncated kernel
+
+    t1 = time.time()
+
+    green_func_slice_truncated_ft = FourierTools.hfft_truncated_gfunc_even_2d(
+        greens_func=green_func_slice_truncated,
+        smooth_cutoff=cutoff_func,
+        dx=dx * m
+    )
+
+    t2 = time.time()
+    if verbose:
+        print(
+            "Thread num: ", num_slice, ", Fourier transform of truncated kernel done in",
+            "{:6.2f}".format(t2 - t1), " s"
+        )
+
+    # ------------------------------------------------------------
+    # Copy result to shared memory
+    green_func_truncated_ft[num_slice, :, :] += green_func_slice_truncated_ft
+
+    t_end = time.time()
+    if verbose:
+        print("Thread num", num_slice, "finished in", "{:6.2f}".format(t_end - t_start), "s")
+
+
 def func_helper3D(params):
     """
     Helper function to solve Helmholtz equation in 3D.
@@ -937,7 +1024,7 @@ class TruncatedKernelGeneralVz3D:
 
 class TruncatedKernelGeneralVz2d:
 
-    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, verbose=False, light_mode=False):
+    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False, light_mode=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5].
 
@@ -954,6 +1041,7 @@ class TruncatedKernelGeneralVz2d:
         :param precision: np.complex64 or np.complex128
         :param green_func_dir: Name of directory where to read / write Green's function from.
         :param num_threads: Maximum number of threads to use
+        :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         :param light_mode: bool (if True an empty class is initialized)
         """
@@ -991,6 +1079,7 @@ class TruncatedKernelGeneralVz2d:
                 os.makedirs(green_func_dir)
 
             TypeChecker.check_int_positive(x=num_threads)
+            TypeChecker.check(x=no_mpi, expected_type=(bool,))
             TypeChecker.check(x=verbose, expected_type=(bool,))
 
             self._n = n
@@ -1004,6 +1093,7 @@ class TruncatedKernelGeneralVz2d:
             self._precision = precision
             self._green_func_dir = green_func_dir
             self._num_threads = num_threads
+            self._no_mpi = no_mpi
             self._verbose = verbose
 
             self._cutoff1 = 1.0
@@ -1012,7 +1102,7 @@ class TruncatedKernelGeneralVz2d:
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, verbose=False):
+    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5].
 
@@ -1028,6 +1118,7 @@ class TruncatedKernelGeneralVz2d:
         :param sigma: The standard deviation of delta to inject for Green's function calculation.
         :param precision: np.complex64 or np.complex128
         :param num_threads: Maximum number of threads to use
+        :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         :param green_func_dir: Name of directory where to read / write Green's function from.
         """
@@ -1071,6 +1162,7 @@ class TruncatedKernelGeneralVz2d:
             print("\n")
 
         TypeChecker.check_int_positive(x=num_threads)
+        TypeChecker.check(x=no_mpi, expected_type=(bool,))
         TypeChecker.check(x=verbose, expected_type=(bool,))
 
         self._n = n
@@ -1084,6 +1176,7 @@ class TruncatedKernelGeneralVz2d:
         self._precision = precision
         self._green_func_dir = green_func_dir
         self._num_threads = num_threads
+        self._no_mpi = no_mpi
         self._verbose = verbose
 
         self._cutoff1 = 1.0
@@ -1380,58 +1473,84 @@ class TruncatedKernelGeneralVz2d:
 
         # ----------------------------------------------------------------------
         # Compute truncated kernel
+
         # Parallelize using multiprocessing
+        if not self._no_mpi:
 
-        # Calculate number of bytes
-        num_bytes = self._nz * self._nz * self._num_bins_non_neg
-        if self._precision == np.complex64:
-            num_bytes *= 8
-        if self._precision == np.complex128:
-            num_bytes *= 16
+            # Calculate number of bytes
+            num_bytes = self._nz * self._nz * self._num_bins_non_neg
+            if self._precision == np.complex64:
+                num_bytes *= 8
+            if self._precision == np.complex128:
+                num_bytes *= 16
 
-        # Read in multiprocessing mode
-        with SharedMemoryManager() as smm:
+            # Read in multiprocessing mode
+            with SharedMemoryManager() as smm:
 
-            # Create shared memory
-            sm = smm.SharedMemory(size=num_bytes)
-            temp = ndarray(
-                shape=(self._nz, self._nz, self._num_bins_non_neg),
-                dtype=self._precision,
-                buffer=sm.buf
+                # Create shared memory
+                sm = smm.SharedMemory(size=num_bytes)
+                temp = ndarray(
+                    shape=(self._nz, self._nz, self._num_bins_non_neg),
+                    dtype=self._precision,
+                    buffer=sm.buf
+                )
+                temp *= 0
+
+                param_tuple_list = [
+                    (
+                        sol[ii, :, :],
+                        self._precision,
+                        num_extra_cells_z + pml_cells_z,
+                        self._m * (self._nz - 1) + num_extra_cells_z + pml_cells_z,
+                        self._m,
+                        self._cutoff_func_coarse_grid,
+                        d,
+                        ii,
+                        sm.name,
+                        self._verbose
+                    ) for ii in range(self._nz)
+                ]
+
+                with Pool(min(len(param_tuple_list), mp.cpu_count(), self._num_threads)) as pool:
+                    max_ = len(param_tuple_list)
+
+                    with tqdm(total=max_) as pbar:
+                        for _ in pool.imap_unordered(func_helper2D, param_tuple_list):
+                            pbar.update()
+
+                self._green_func = temp * 1.0
+
+            # Write Green's function to disk
+            self.write_green_func()
+
+        # Do not parallelize
+        else:
+
+            self._green_func = np.zeros(
+                shape=(self._nz, self._nz, self._num_bins_non_neg), dtype=self._precision
             )
-            temp *= 0
 
-            param_tuple_list = [
-                (
-                    sol[ii, :, :],
-                    self._precision,
-                    num_extra_cells_z + pml_cells_z,
-                    self._m * (self._nz - 1) + num_extra_cells_z + pml_cells_z,
-                    self._m,
-                    self._cutoff_func_coarse_grid,
-                    d,
-                    ii,
-                    sm.name,
-                    self._verbose
-                ) for ii in range(self._nz)
-            ]
+            for ii in range(self._nz):
+                func_helper2D_no_mpi(
+                    green_func=sol[ii, :, :],
+                    precision=self._precision,
+                    start_index_z=num_extra_cells_z + pml_cells_z,
+                    end_index_z=self._m * (self._nz - 1) + num_extra_cells_z + pml_cells_z,
+                    m=self._m,
+                    cutoff_func=self._cutoff_func_coarse_grid,
+                    dx=d,
+                    num_slice=ii,
+                    green_func_truncated_ft=self._green_func,
+                    verbose=False
+                )
 
-            with Pool(min(len(param_tuple_list), mp.cpu_count(), self._num_threads)) as pool:
-                max_ = len(param_tuple_list)
-
-                with tqdm(total=max_) as pbar:
-                    for _ in pool.imap_unordered(func_helper2D, param_tuple_list):
-                        pbar.update()
-
-            self._green_func = temp * 1.0
+            # Write Green's function to disk
+            self.write_green_func()
 
         t22 = time.time()
-        print("\nComputing 2d Green's Function took ", "{:6.2f}".format(t22 - t11), " s\n")
+        print("\nComputing 2d Green's function took ", "{:6.2f}".format(t22 - t11), " s\n")
         print("\nGreen's Function size in memory (Mb) : ", "{:6.2f}".format(sys.getsizeof(self._green_func) / 1e6))
         print("\n")
-
-        # Write Green's function to disk
-        self.write_green_func()
 
     @staticmethod
     @numba.njit(parallel=True)
