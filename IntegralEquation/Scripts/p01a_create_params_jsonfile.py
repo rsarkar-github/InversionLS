@@ -8,6 +8,8 @@ from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralG
 if __name__ == "__main__":
 
     basedir = "InversionLS/Expt/marmousi1/"
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
 
     # Load Marmousi files
     with np.load("InversionLS/Data/marmousi-vp-vz-interp.npz") as data:
