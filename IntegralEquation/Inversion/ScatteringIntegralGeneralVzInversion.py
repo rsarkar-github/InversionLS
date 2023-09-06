@@ -269,6 +269,9 @@ class ScatteringIntegralGeneralVzInversion2d:
         self._source_list = None
         self._true_model_pert = None
 
+        # If self._state == 6, the next field is unchanged
+        self._curr_iter_num = None
+
         self.__run_initializer()
 
     @property
@@ -330,6 +333,10 @@ class ScatteringIntegralGeneralVzInversion2d:
     @property
     def true_model_pert(self):
         return self._true_model_pert
+
+    @property
+    def curr_iter_num(self):
+        return self._curr_iter_num
 
     def add_k_values(self, k_values_list):
         """
@@ -672,6 +679,10 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         return true_data
 
+    def set_initial_pert_wavefields(self, model_pert, wavefield_list):
+        # TODO
+        pass
+
     def set_zero_initial_pert_wavefields(self):
         """
         Sets zero initial perturbation
@@ -700,6 +711,43 @@ class ScatteringIntegralGeneralVzInversion2d:
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
+
+    def perform_inversion_update_wavefield(
+            self, iter_num=None,
+            lambda_arr, mu_arr,
+            max_iter=100, solver="lsmr", tol=1e-6
+    ):
+        # TODO: fix this
+        if self._state < 6:
+            print(
+                "\nOperation not allowed. Need self._state >= 6, but obtained self._state = ", self._state
+            )
+            return
+
+        TypeChecker.check_int_positive(x=max_iter)
+        TypeChecker.check(x=solver, expected_type=(str,))
+        if solver not in ["lsqr", "lsmr"]:
+            print("solver type not supported. Only solvers available are lsqr and lsmr.")
+            return
+
+        if iter_num is None:
+
+            next_iter_num, step_num = self.__get_next_iter_num()
+            if step_num == 2:
+                print("Iteration already performed.")
+                return
+
+            if not self.__check_input_file_availability(next_iter_num, step_num):
+                print("Input files not available. Cannot proceed.")
+                return
+
+            for k in range(self._num_k_values):
+
+
+
+        # TODO
+        else:
+            pass
 
     def print_params(self):
 
@@ -951,6 +999,23 @@ class ScatteringIntegralGeneralVzInversion2d:
             return os.path.join(self._basedir, "iterations/initial_wavefield_" + str(i) + ".npz")
         else:
             return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/wavefield_" + str(i) + ".npz")
+
+    def __get_next_iter_num(self):
+        """
+        Next iteration to run
+        :return: (int)
+            Next iteration num
+        """
+        if self._state == 6:
+            return 0
+
+        elif self._state == 7:
+            # TODO: fix this
+            return self._curr_iter_num
+
+    def __check_input_file_availability(self, next_iter_num, step_num):
+        # TODO
+        pass
 
     def __clean(self, state):
 
