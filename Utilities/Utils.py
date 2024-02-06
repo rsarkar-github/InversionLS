@@ -1,5 +1,6 @@
 import numpy as np
 import numba
+from scipy import interpolate
 
 
 @numba.njit
@@ -265,3 +266,85 @@ def laplacian(array2d_in, array2d_out, dx: float, dz: float, order: int = 10):
                     (array2d[i, j + 5] + array2d[i, j - 5]) * stencil[5]
 
                 array2d_out[i1, j1] += t * fx
+
+
+def make_velocity_from_trace(vel_trace_, n1_, n2_):
+    """
+    :param vel_trace_: velocity values as a 2D numpy array of shape [N, 1], assumed dtype = np.float32
+    :param n1_: points along x1 direction
+    :param n2_: points along x2 direction
+
+    The trace is first interpolated to a grid with n1_ points in x1 direction (same vertical extent).
+    Then it is copied n2_ times in x2 direction.
+    Result is returned as a numpy array or shape (n1_, n2_).
+    """
+
+    n1_in_, _ = vel_trace_.shape
+
+    x1_start_ = 0.0
+    x1_end_ = n1_in_
+
+    coord_in_ = np.linspace(start=x1_start_, stop=x1_end_, num=n1_in_, endpoint=True)
+    val_in_ = np.reshape(vel_trace_, newshape=(n1_in_,))
+
+    f = interpolate.interp1d(coord_in_, val_in_, kind="linear")
+
+    coord_out_ = np.linspace(start=x1_start_, stop=x1_end_, num=n1_, endpoint=True)
+    val_out_ = np.reshape(f(coord_out_), newshape=(n1_, 1))
+
+    vel_ = np.zeros(shape=(n1_, n2_), dtype=np.float32)
+
+    for ii in range(n1_):
+        vel_[ii, :] = val_out_[ii, 0]
+
+    return vel_
+
+
+def make_velocity3d_from_trace(vel_trace_, n1_, n2_, n3_):
+    """
+        :param vel_trace_: velocity values as a 2D numpy array of shape [N, 1], assumed dtype = np.float32
+        :param n1_: points along x1 direction
+        :param n2_: points along x2 direction
+        :param n3_: points along x3 direction
+
+        The trace is first interpolated to a grid with n1_ points in x1 direction (same vertical extent).
+        Then it is copied n2_ times in x2 direction.
+        Then it is copied n3_ times in x3 direction.
+        Result is returned as a numpy array or shape (n1_, n2_, n3_).
+        """
+
+    n1_in_, _ = vel_trace_.shape
+
+    x1_start_ = 0.0
+    x1_end_ = n1_in_
+
+    coord_in_ = np.linspace(start=x1_start_, stop=x1_end_, num=n1_in_, endpoint=True)
+    val_in_ = np.reshape(vel_trace_, newshape=(n1_in_,))
+
+    f = interpolate.interp1d(coord_in_, val_in_, kind="linear")
+
+    coord_out_ = np.linspace(start=x1_start_, stop=x1_end_, num=n1_, endpoint=True)
+    val_out_ = np.reshape(f(coord_out_), newshape=(n1_, 1))
+
+    vel_ = np.zeros(shape=(n1_, n2_, n3_), dtype=np.float32)
+
+    for ii in range(n1_):
+        vel_[ii, :, :] = val_out_[ii, 0]
+
+    return vel_
+
+def extend_vel_trace_1d(vel_trace_, pad_cells_):
+    """
+    :param vel_trace_: velocity values as a 2D numpy array of shape [N, 1], assumed dtype = np.float32
+    :param pad_cells_: number of cells to pad along each end
+    """
+
+    n1_in_, _ = vel_trace_.shape
+    n1_out_ = n1_in_ + 2 * pad_cells_
+
+    vel_trace_out_ = np.zeros(shape=(n1_out_, 1), dtype=np.float32)
+    vel_trace_out_[pad_cells_: pad_cells_ + n1_in_, 0] = vel_trace_.flatten()
+    vel_trace_out_[0: pad_cells_, 0] = vel_trace_out_[pad_cells_, 0]
+    vel_trace_out_[pad_cells_ + n1_in_: n1_out_, 0] = vel_trace_out_[pad_cells_ + n1_in_ - 1, 0]
+
+    return vel_trace_out_

@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 def func_helper2D(params):
     """
-    Helper function to solve Helmholtz equation in 3D.
+    Helper function to solve Helmholtz equation in 2D.
     Compute Fourier transform of truncated kernel.
 
     :param params:
@@ -126,7 +126,7 @@ def func_helper2D_no_mpi(
     verbose
 ):
     """
-    Helper function to solve Helmholtz equation in 3D.
+    Helper function to solve Helmholtz equation in 2D.
     Compute Fourier transform of truncated kernel.
 
     :param green_func:(2D numpy.ndarray)
