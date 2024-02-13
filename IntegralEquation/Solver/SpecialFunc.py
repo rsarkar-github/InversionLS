@@ -319,7 +319,7 @@ def legendre_q(nu, z, tol=1e-15):
 def legendre_q_v1(nu, z, tol=1e-15):
     """
     Computes legendre Q function using relation to hypergeometric function
-    Q_(nu - 1/2)(z) = f * hyp2f1(1/2, 1/2 + nu, 1 + nu, e^(-2 nu)),
+    Q_(nu - 1/2)(z) = f * hyp2f1(1/2, 1/2 + nu, 1 + nu, e^(-2 eta)),
     where f = sqrt(pi) * e^(-eta(nu + 0.5)) * gamma(nu + 1/2) / gamma(nu + 1), z = cosh(eta), and |z| > 1
 
     :param nu: complex, but not a negative integer

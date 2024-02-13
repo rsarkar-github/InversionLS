@@ -7,7 +7,7 @@ import numpy as np
 import scipy.fft as scfft
 import scipy.special as sp
 
-from ...Utilities import TypeChecker
+from ..Utilities import TypeChecker
 
 
 class TruncatedKernelConstantVel3d:
@@ -167,13 +167,13 @@ class TruncatedKernelConstantVel3d:
                     if np.abs(kabs - k) > tol:
                         f2 = kabs * cutoff
                         f3 = -1.0 + f1exp * (np.cos(f2) - np.sinc(f2 / np.pi) * j * f1)
-                        green_func[i1, i2, i3] = f3 / ((k - kabs) * (k + kabs))
+                        green_func[i1, i2, i3] = -f3 / ((k - kabs) * (k + kabs))
 
                     else:
                         f2 = (j / k) * (f1 - f1exp * np.sin(f1))
                         f3 = (2 * j / (k ** 2.0)) * f1exp * (f1 * np.cos(f1) - np.sin(f1)) - (cutoff ** 2.0)
                         f3 = 0.5 * f3 * (k - kabs)
-                        green_func[i1, i2, i3] = (f2 + f3) / (k + kabs)
+                        green_func[i1, i2, i3] = -(f2 + f3) / (k + kabs)
 
     def __calculate_green_func(self):
 

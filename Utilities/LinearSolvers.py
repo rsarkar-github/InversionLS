@@ -104,6 +104,16 @@ def conjugate_gradient(linear_operator, rhs, x0, niter, printobj=False):
     return x, residual
 
 
+class gmres_counter(object):
+    def __init__(self, disp=True):
+        self._disp = disp
+        self.niter = 0
+    def __call__(self, rk=None):
+        self.niter += 1
+        if self._disp:
+            print('iter %3i,\t residual = %s' % (self.niter, str(rk)))
+
+
 if __name__ == "__main__":
 
     # Create a trial problem

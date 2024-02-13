@@ -14,13 +14,13 @@ from multiprocessing.shared_memory import SharedMemory
 from multiprocessing.managers import SharedMemoryManager
 from ..Solver.HelmholtzOperators import create_helmholtz2d_matrix_radial
 from ..Solver.HelmholtzOperators import create_helmholtz2d_matrix_even
-from ...Utilities import TypeChecker, FourierTools
+from ..Utilities import TypeChecker, FourierTools
 import matplotlib.pyplot as plt
 
 
 def func_helper2D(params):
     """
-    Helper function to solve Helmholtz equation in 2D.
+    Helper function to solve Helmholtz equation in 3D.
     Compute Fourier transform of truncated kernel.
 
     :param params:
@@ -126,7 +126,7 @@ def func_helper2D_no_mpi(
     verbose
 ):
     """
-    Helper function to solve Helmholtz equation in 2D.
+    Helper function to solve Helmholtz equation in 3D.
     Compute Fourier transform of truncated kernel.
 
     :param green_func:(2D numpy.ndarray)
@@ -146,7 +146,7 @@ def func_helper2D_no_mpi(
     :param num_slice: (int)
         depth slice number
     :param green_func_truncated_ft: (str)
-        Numpy ndarray containing the truncated the Green's function
+        Numpy ndarray containing the truncated Green's function
     :param verbose: (bool)
         verbose flag
     """
@@ -206,74 +206,97 @@ def func_helper3D(params):
     Compute Fourier transform of truncated kernel.
 
     :param params:
-        params[0]: (sparse matrix object)
-            Helmholtz matrix
+        params[0]: (2D numpy.ndarray)
+            Solved Green's functions for the depth slice
         params[1]: (np.complex64 or np.complex128)
             precision
         params[2]: (int)
-            Number of grid points in z direction on fine grid
-        params[3]: (int)
-            Number of grid points in x direction on fine grid
-        params[4]: (int)
             Index for starting extraction in z direction
-        params[5]: (int)
+        params[3]: (int)
             Index for ending extraction in z direction
-        params[6]: (int)
+        params[4]: (int)
             self._m (decimation factor)
+        params[5]: (int)
+            self._num_bins_non_neg
+        params[6]: (np.ndarray)
+            self._cutoff_func_fine_grid (cutoff function on fine grid)
         params[7]: (float)
-            self._sigma (standard deviation of Gaussian to inject)
-        params[8]: (np.ndarray)
-            self._cutoff_func_coarse_grid (cutoff function)
-        params[9]: (float)
             fine grid spacing along x
-        params[10]: (float)
-            fine grid spacing along z
-        params[11]: (int)
+        params[8]: (int)
             depth slice number
-        params[12]: (str)
-            self._green_func_dir (for writing the Green's functions)
-        params[13]: (str)
+        params[9]: (str)
             shared memory object name holding the Green's function
+        params[10]: (bool)
+            verbose flag
     """
+
+    t_start = time.time()
 
     # ------------------------------------------------------------
     # Read in parameters
 
-    mat = params[0]
+    green_func = params[0]
     precision = params[1]
-    nz = params[2]
-    nx = params[3]
-    start_index_z = params[4]
-    end_index_z = params[5]
-    m = params[6]
-    sigma = params[7]
-    cutoff = params[8]
-    dx = params[9]
-    dz = params[10]
-    num_slice = params[11]
-    green_func_dir = params[12]
-    sm_name = params[13]
+    start_index_z = params[2]
+    end_index_z = params[3]
+    m = params[4]
+    num_bins_non_neg = params[5]
+    cutoff_func_fine = params[6]
+    dx = params[7]
+    num_slice = params[8]
+    sm_name = params[9]
+    verbose = params[10]
 
     # ------------------------------------------------------------
-    # Create source
+    # Extract solution
 
-    # ------------------------------------------------------------
-    # Solve Helmholtz equation and extract solution
+    t1 = time.time()
 
-    mat_lu = splu(mat)
+    green_func_slice = green_func[start_index_z:end_index_z + 1:m, :]
 
-    # ------------------------------------------------------------
-    # Copy solution into array of right shape
-    # Apply cutoff function
+    nz_new = green_func_slice.shape[0]
+    nx_new = cutoff_func_fine.shape[0]
+
+    green_func_slice_truncated = np.zeros(shape=(nz_new, nx_new), dtype=precision)
+    green_func_slice_truncated[:, 0:green_func_slice.shape[1]] = green_func_slice
+
+    t2 = time.time()
+    if verbose:
+        print(
+            "Thread num: ", num_slice, ", Extraction done  in",
+            "{:6.2f}".format(t2 - t1), " s"
+        )
 
     # ------------------------------------------------------------
     # Calculate Fourier transform of truncated kernel
 
+    t1 = time.time()
+
+    green_func_slice_truncated_ft = FourierTools.hfft_truncated_gfunc_radial_3d(
+        greens_func=green_func_slice_truncated,
+        smooth_cutoff=cutoff_func_fine,
+        dx=dx,
+        fac=m
+    )
+
+    t2 = time.time()
+    if verbose:
+        print(
+            "Thread num: ", num_slice, ", Fourier transform of truncated kernel done in",
+            "{:6.2f}".format(t2 - t1), " s"
+        )
+
     # ------------------------------------------------------------
     # Copy result to shared memory
 
-    # ------------------------------------------------------------
-    # Save to disk
+    sm = SharedMemory(sm_name)
+    data = ndarray(shape=(nz_new, nz_new, num_bins_non_neg, num_bins_non_neg), dtype=precision, buffer=sm.buf)
+    data[num_slice, :, :, :] += green_func_slice_truncated_ft
+    sm.close()
+
+    t_end = time.time()
+    if verbose:
+        print("Thread num", num_slice, "finished in", "{:6.2f}".format(t_end - t_start), "s")
 
 
 def func_write3D(params):
@@ -303,7 +326,7 @@ def func_write3D(params):
 
     # Write slice to disk using default numpy compression
     file_name = os.path.join(green_func_dir, "green_func_slice_" + str(nz_slice) + ".npz")
-    np.savez_compressed(file_name, data[nz, :, :, :])
+    np.savez_compressed(file_name, data[nz_slice, :, :, :])
 
     # Close shared memory
     sm.close()
@@ -338,15 +361,15 @@ def func_read3D(params):
     file_name = os.path.join(green_func_dir, "green_func_slice_" + str(nz_slice) + ".npz")
     with np.load(file_name) as f:
         data_slice = f["arr_0"]
-    data[nz, :, :, :] += data_slice
+    data[nz_slice, :, :, :] += data_slice
 
     # Close shared memory
     sm.close()
 
 
-class TruncatedKernelGeneralVz3D:
+class TruncatedKernelGeneralVz3d:
 
-    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, verbose=False, light_mode=False):
+    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False, light_mode=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5]^2.
 
@@ -362,6 +385,8 @@ class TruncatedKernelGeneralVz3D:
         :param sigma: The standard deviation of delta to inject for Green's function calculation.
         :param precision: np.complex64 or np.complex128
         :param green_func_dir: Name of directory where to read / write Green's function from.
+        :param num_threads: Maximum number of threads to use
+        :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         :param light_mode: bool (if True an empty class is initialized)
         """
@@ -381,7 +406,7 @@ class TruncatedKernelGeneralVz3D:
             if nz < 2:
                 raise ValueError("n must be an integer >= 2")
 
-            TypeChecker.check_float_positive(a)
+            TypeChecker.check(x=a, expected_type=(float,))
             TypeChecker.check_float_strict_lower_bound(x=b, lb=a)
             TypeChecker.check_float_positive(k)
 
@@ -395,9 +420,12 @@ class TruncatedKernelGeneralVz3D:
                 raise TypeError("Only precision types numpy.complex64 or numpy.complex128 are supported")
 
             TypeChecker.check(x=green_func_dir, expected_type=(str,))
+
             if not os.path.exists(green_func_dir):
                 os.makedirs(green_func_dir)
 
+            TypeChecker.check_int_positive(x=num_threads)
+            TypeChecker.check(x=no_mpi, expected_type=(bool,))
             TypeChecker.check(x=verbose, expected_type=(bool,))
 
             self._n = n
@@ -410,15 +438,17 @@ class TruncatedKernelGeneralVz3D:
             self._sigma = sigma
             self._precision = precision
             self._green_func_dir = green_func_dir
+            self._num_threads = num_threads
+            self._no_mpi = no_mpi
             self._verbose = verbose
 
             self._cutoff1 = np.sqrt(2.0)
-            self._cutoff2 = 1.7
+            self._cutoff2 = 1.5
 
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, verbose=False):
+    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5]^2.
 
@@ -433,6 +463,8 @@ class TruncatedKernelGeneralVz3D:
         :param m: Decimation factor for calculating Green's function on a fine grid.
         :param sigma: The standard deviation of delta to inject for Green's function calculation.
         :param precision: np.complex64 or np.complex128
+        :param num_threads: Maximum number of threads to use
+        :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         :param green_func_dir: Name of directory where to read / write Green's function from.
         """
@@ -447,7 +479,7 @@ class TruncatedKernelGeneralVz3D:
         if nz < 2:
             raise ValueError("n must be an integer >= 2")
 
-        TypeChecker.check_float_positive(a)
+        TypeChecker.check(x=a, expected_type=(float,))
         TypeChecker.check_float_strict_lower_bound(x=b, lb=a)
         TypeChecker.check_float_positive(k)
 
@@ -476,6 +508,8 @@ class TruncatedKernelGeneralVz3D:
                 print("Class set_parameters method failed. Exiting without changes to class.")
                 print("\n")
 
+        TypeChecker.check_int_positive(x=num_threads)
+        TypeChecker.check(x=no_mpi, expected_type=(bool,))
         TypeChecker.check(x=verbose, expected_type=(bool,))
 
         self._n = n
@@ -488,10 +522,12 @@ class TruncatedKernelGeneralVz3D:
         self._sigma = sigma
         self._precision = precision
         self._green_func_dir = green_func_dir
+        self._num_threads = num_threads
+        self._no_mpi = no_mpi
         self._verbose = verbose
 
         self._cutoff1 = np.sqrt(2.0)
-        self._cutoff2 = 1.7
+        self._cutoff2 = 1.5
 
         self.__initialize_class(green_func_flag=False)
         self.__read_green_func()
@@ -619,11 +655,13 @@ class TruncatedKernelGeneralVz3D:
                 file_dir = green_func_dir
 
             # Calculate number of bytes
-            num_bytes = self._nz * self._nz * (2 * self._n - 1) * (2 * self._n - 1)
+            num_bytes = self._nz * self._nz * self._num_bins_non_neg * self._num_bins_non_neg
             if self._precision == np.complex64:
                 num_bytes *= 8
             if self._precision == np.complex128:
                 num_bytes *= 16
+
+            t1 = time.time()
 
             # Write in multiprocessing mode
             with SharedMemoryManager() as smm:
@@ -645,18 +683,19 @@ class TruncatedKernelGeneralVz3D:
                     ) for ii in range(self._nz)
                 ]
 
-                t1 = time.time()
-                with Pool(min(len(param_tuple_list), mp.cpu_count())) as pool:
+                print("\nWriting Green's function...")
+
+                with Pool(min(len(param_tuple_list), mp.cpu_count(), self._num_threads)) as pool:
                     max_ = len(param_tuple_list)
 
                     with tqdm(total=max_) as pbar:
                         for _ in pool.imap_unordered(func_write3D, param_tuple_list):
                             pbar.update()
 
-                t2 = time.time()
-                print("\n")
-                print("Time needed to write Green's function to disk = ", "{:6.2f}".format(t2 - t1), " s")
-                print("\n")
+            t2 = time.time()
+            print("\n")
+            print("Time needed to write Green's function to disk = ", "{:6.2f}".format(t2 - t1), " s")
+            print("\n")
 
     @property
     def greens_func(self):
@@ -664,6 +703,20 @@ class TruncatedKernelGeneralVz3D:
             raise ValueError("Class initialized in light mode, cannot perform operation.")
         else:
             return self._green_func
+
+    @greens_func.setter
+    def greens_func(self, green_func):
+
+        if not self._initialized_flag:
+            raise ValueError("Class initialized in light mode, cannot perform operation.")
+
+        TypeChecker.check_ndarray(
+            x=green_func,
+            dtypes=(self._precision,),
+            shape=(self._nz, self._nz, self._num_bins_non_neg, self._num_bins_non_neg)
+        )
+
+        self._green_func = green_func
 
     @property
     def n(self):
@@ -737,7 +790,7 @@ class TruncatedKernelGeneralVz3D:
 
     def __calculate_green_func(self):
 
-        t1 = time.time()
+        t11 = time.time()
         print("\nStarting Green's Function calculation ")
 
         # Extra cells to deal with Helmholtz solver issues on top & bottom
@@ -775,7 +828,13 @@ class TruncatedKernelGeneralVz3D:
             nx=num_cells_x + 1
         )
 
+        # ----------------------------------------------------------------------
+        # Solve Helmholtz equation for Green's function for all depth levels
+
         # Create Helmholtz matrix
+        print("---------------------------------------------------")
+        print("Creating helmholtz matrix and factorizing it...")
+        t1 = time.time()
         mat = create_helmholtz2d_matrix_radial(
             a1=extent_z,
             a2=extent_x,
@@ -788,62 +847,128 @@ class TruncatedKernelGeneralVz3D:
             adj=False,
             warnings=True
         )
+        mat_lu = splu(mat)
+        t2 = time.time()
+        print("Helmholtz matrix created and factorized in ", "{:6.2f}".format(t2 - t1), " s")
+        print("\n")
 
-        # ----------------------------------------------------------------------
-        # Solve Helmholtz equation for Green's function for all depth levels
-        # Parallelize using multiprocessing
+        # Source creation in parallel using numba
+        print("---------------------------------------------------")
+        print("Creating sources for Helmholtz solves...")
+        t1 = time.time()
 
-        # Calculate number of bytes
-        num_bytes = self._nz * self._nz * (2 * self._n - 1) * (2 * self._n - 1)
-        if self._precision == np.complex64:
-            num_bytes *= 8
-        if self._precision == np.complex128:
-            num_bytes *= 16
+        grid_z = np.linspace(start=0, stop=extent_z, num=num_cells_z + 1, endpoint=True)
+        grid_x = np.linspace(start=0, stop=extent_x, num=num_cells_x + 1, endpoint=True)
+        z1, x1 = np.meshgrid(grid_z, grid_x, indexing="ij")
+        sources = np.zeros(shape=(self._nz, num_cells_z + 1, num_cells_x + 1), dtype=np.float32)
 
-        # Read in multiprocessing mode
-        with SharedMemoryManager() as smm:
-
-            # Create shared memory
-            sm = smm.SharedMemory(size=num_bytes)
-            self._green_func = ndarray(
-                shape=(self._nz, self._nz, 2 * self._n - 1, 2 * self._n - 1),
-                dtype=self._precision,
-                buffer=sm.buf
-            )
-            self._green_func *= 0
-
-            param_tuple_list = [
-                (
-                    mat,
-                    self._precision,
-                    num_cells_z + 1,
-                    num_cells_x + 1,
-                    num_extra_cells_z + pml_cells_z,
-                    self._m * (self._nz - 1) + num_extra_cells_z + pml_cells_z,
-                    self._m,
-                    self._sigma,
-                    self._cutoff_func_coarse_grid,
-                    d,
-                    dz,
-                    ii,
-                    self._green_func_dir,
-                    sm.name
-                ) for ii in range(self._nz)
-            ]
-
-            with Pool(min(len(param_tuple_list), mp.cpu_count())) as pool:
-                max_ = len(param_tuple_list)
-
-                with tqdm(total=max_) as pbar:
-                    for _ in pool.imap_unordered(func_helper3D, param_tuple_list):
-                        pbar.update()
+        self.__create_sources_for_helmholtz(
+            sources,
+            z1=z1,
+            x1=x1,
+            num_slices=self._nz,
+            start_index_z=num_extra_cells_z + pml_cells_z,
+            dz=dz,
+            m=self._m,
+            sigma=self._sigma
+        )
+        sources = sources.astype(self._precision)
 
         t2 = time.time()
-        print("\nComputing 3d Green's Function took ", "{:6.2f}".format(t2 - t1), " s\n")
+        print("\nSources created in ", "{:6.2f}".format(t2 - t1), " s")
+        print("\n")
+
+        # Solve the Helmholtz equation for all rhs
+        print("---------------------------------------------------")
+        print("Starting Helmholtz solves...")
+        t1 = time.time()
+
+        sol = sources * 0.0
+        for i in range(self._nz):
+            print("Solving for depth slice ", i)
+            sol1 = mat_lu.solve(
+                np.reshape(
+                    sources[i, :, :], newshape=((num_cells_z + 1) * (num_cells_x + 1), 1)
+                )
+            )
+            sol[i, :, :] += np.reshape(sol1, newshape=(num_cells_z + 1, num_cells_x + 1))
+
+        t2 = time.time()
+        print("\nHelmholtz solves completed in ", "{:6.2f}".format(t2 - t1), " s")
+        print("\n")
+
+        # ----------------------------------------------------------------------
+        # Compute truncated kernel
+
+        # Parallelize using multiprocessing
+        if not self._no_mpi:
+
+            # Calculate number of bytes
+            num_bytes = self._nz * self._nz * self._num_bins_non_neg * self._num_bins_non_neg
+            if self._precision == np.complex64:
+                num_bytes *= 8
+            if self._precision == np.complex128:
+                num_bytes *= 16
+
+            # Read in multiprocessing mode
+            with SharedMemoryManager() as smm:
+
+                # Create shared memory
+                sm = smm.SharedMemory(size=num_bytes)
+                temp = ndarray(
+                    shape=(self._nz, self._nz, self._num_bins_non_neg, self._num_bins_non_neg),
+                    dtype=self._precision,
+                    buffer=sm.buf
+                )
+                temp *= 0
+
+                param_tuple_list = [
+                    (
+                        sol[ii, :, :],
+                        self._precision,
+                        num_extra_cells_z + pml_cells_z,
+                        self._m * (self._nz - 1) + num_extra_cells_z + pml_cells_z,
+                        self._m,
+                        self._num_bins_non_neg,
+                        self._cutoff_func_fine_grid,
+                        d,
+                        ii,
+                        sm.name,
+                        self._verbose
+                    ) for ii in range(self._nz)
+                ]
+
+                with Pool(min(len(param_tuple_list), mp.cpu_count(), self._num_threads)) as pool:
+                    max_ = len(param_tuple_list)
+
+                    with tqdm(total=max_) as pbar:
+                        for _ in pool.imap_unordered(func_helper3D, param_tuple_list):
+                            pbar.update()
+
+                self._green_func = temp * 1.0
+
+            # Write Green's function to disk
+            self.write_green_func()
+
+        t22 = time.time()
+        print("\nComputing 3d Green's Function took ", "{:6.2f}".format(t22 - t11), " s\n")
         print("\nGreen's Function size in memory (Gb) : ", "{:6.2f}".format(sys.getsizeof(self._green_func) / 1e9))
         print("\n")
 
     @staticmethod
+    @numba.njit(parallel=True)
+    def __create_sources_for_helmholtz(sources, z1, x1, num_slices, start_index_z, dz, m, sigma):
+
+        for num_slice in numba.prange(num_slices):
+            print("Computing source number ", num_slice)
+
+            gaussian_center_z = (start_index_z + num_slice * m) * dz
+            sources[num_slice, :, :] += np.exp(-0.5 * ((z1 - gaussian_center_z) ** 2.0 + x1 ** 2.0) / (sigma ** 2.0))
+
+        sources /= (2 * np.pi * sigma * sigma) ** 1.5
+
+    @staticmethod
+    @numba.njit
     def __extend_vel_trace_1d(vz, pad_cells):
         """
         :param vz: velocity values as a 1D numpy array of shape [nz_in, 1], assumed dtype = np.float32
@@ -902,17 +1027,20 @@ class TruncatedKernelGeneralVz3D:
             raise ValueError("Minimum grid spacing condition violated")
 
         if grid_min >= lambda_min / 10.0:
-            print("\nWarning: Recommended minimum grid spacing "
-                  "is 10 times smallest wave length.\n")
+            print("\nWarning: Recommended minimum grid spacing is 10 times smallest wave length.\n")
+            print("Recommended minimum grid spacing", lambda_min / 10.0)
+            print("Grid spacing detected", grid_min)
 
     def __read_green_func(self):
 
         # Calculate number of bytes
-        num_bytes = self._nz * self._nz * (2 * self._n - 1) * (2 * self._n - 1)
+        num_bytes = self._nz * self._nz * self._num_bins_non_neg * self._num_bins_non_neg
         if self._precision == np.complex64:
             num_bytes *= 8
         if self._precision == np.complex128:
             num_bytes *= 16
+
+        t1 = time.time()
 
         # Read in multiprocessing mode
         with SharedMemoryManager() as smm:
@@ -920,7 +1048,7 @@ class TruncatedKernelGeneralVz3D:
             # Create shared memory
             sm = smm.SharedMemory(size=num_bytes)
             self._green_func = ndarray(
-                shape=(self._nz, self._nz, 2 * self._n - 1, self._n - 1),
+                shape=(self._nz, self._nz, self._num_bins_non_neg, self._num_bins_non_neg),
                 dtype=self._precision,
                 buffer=sm.buf
             )
@@ -937,18 +1065,19 @@ class TruncatedKernelGeneralVz3D:
                 ) for ii in range(self._nz)
             ]
 
-            t1 = time.time()
-            with Pool(min(len(param_tuple_list), mp.cpu_count())) as pool:
+            print("\nReading Green's function...")
+
+            with Pool(min(len(param_tuple_list), mp.cpu_count(), self._num_threads)) as pool:
                 max_ = len(param_tuple_list)
 
                 with tqdm(total=max_) as pbar:
                     for _ in pool.imap_unordered(func_read3D, param_tuple_list):
                         pbar.update()
 
-            t2 = time.time()
-            print("\n")
-            print("Time needed to read Green's function from disk = ", "{:6.2f}".format(t2 - t1), " s")
-            print("\n")
+        t2 = time.time()
+        print("\n")
+        print("Time needed to read Green's function from disk = ", "{:6.2f}".format(t2 - t1), " s")
+        print("\n")
 
     def __calculate_cutoff_func(self):
         """
@@ -968,6 +1097,7 @@ class TruncatedKernelGeneralVz3D:
         """
 
         cutoff_func_coarse_grid = np.zeros(shape=(self._num_bins_non_neg,), dtype=np.float32)
+        cutoff_func_fine_grid = np.zeros(shape=(self._m * (self._num_bins_non_neg - 1) + 1,), dtype=np.float32)
 
         # Coarse grid calculation
         for ii in range(self._num_bins_non_neg):
@@ -981,7 +1111,20 @@ class TruncatedKernelGeneralVz3D:
                 t2 = np.exp(-1.0 / (x - self._cutoff1))
                 cutoff_func_coarse_grid[ii] = t1 / (t1 + t2)
 
-        return cutoff_func_coarse_grid
+        # Fine grid calculation
+        d1 = self._d / self._m
+        for ii in range(self._m * (self._num_bins_non_neg - 1) + 1):
+            x = ii * d1
+            if x <= self._cutoff1:
+                cutoff_func_fine_grid[ii] = 1.0
+            elif x >= self._cutoff2:
+                cutoff_func_fine_grid[ii] = 0.0
+            else:
+                t1 = np.exp(-1.0 / (self._cutoff2 - x))
+                t2 = np.exp(-1.0 / (x - self._cutoff1))
+                cutoff_func_fine_grid[ii] = t1 / (t1 + t2)
+
+        return cutoff_func_coarse_grid, cutoff_func_fine_grid
 
     def __initialize_class(self, green_func_flag=True):
 
@@ -1009,7 +1152,7 @@ class TruncatedKernelGeneralVz3D:
         self.__check_grid_size()
 
         # Calculate cutoff functions
-        self._cutoff_func_coarse_grid = self.__calculate_cutoff_func()
+        self._cutoff_func_coarse_grid, self._cutoff_func_fine_grid = self.__calculate_cutoff_func()
 
         # Calculate FT of Truncated Green's Function
         # Write Green's function to disk
@@ -1097,7 +1240,7 @@ class TruncatedKernelGeneralVz2d:
             self._verbose = verbose
 
             self._cutoff1 = 1.0
-            self._cutoff2 = 1.2
+            self._cutoff2 = 1.1
 
             # Run class initializer
             self.__initialize_class()
@@ -1639,8 +1782,9 @@ class TruncatedKernelGeneralVz2d:
             raise ValueError("Minimum grid spacing condition violated")
 
         if grid_min >= lambda_min / 10.0:
-            print("\nWarning: Recommended minimum grid spacing "
-                  "is 10 times smallest wave length.\n")
+            print("\nWarning: Recommended minimum grid spacing is 10 times smallest wave length.")
+            print("Recommended minimum grid spacing", lambda_min / 10.0)
+            print("Grid spacing detected", grid_min)
 
     def __read_green_func(self):
 
