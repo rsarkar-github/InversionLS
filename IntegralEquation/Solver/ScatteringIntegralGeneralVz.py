@@ -14,7 +14,7 @@ from multiprocessing.shared_memory import SharedMemory
 from multiprocessing.managers import SharedMemoryManager
 from ..Solver.HelmholtzOperators import create_helmholtz2d_matrix_radial
 from ..Solver.HelmholtzOperators import create_helmholtz2d_matrix_even
-from ..Utilities import TypeChecker, FourierTools
+from ...Utilities import TypeChecker, FourierTools
 import matplotlib.pyplot as plt
 
 

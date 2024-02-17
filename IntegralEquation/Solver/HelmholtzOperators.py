@@ -1,7 +1,7 @@
 from scipy.sparse import csc_matrix
 import numpy as np
 from tqdm import tqdm
-from ..Utilities import TypeChecker
+from ...Utilities import TypeChecker
 
 
 def create_helmholtz2d_matrix(

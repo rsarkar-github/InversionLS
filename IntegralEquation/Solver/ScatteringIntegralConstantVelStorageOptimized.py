@@ -3,7 +3,7 @@ import numba
 import scipy.special as sp
 import scipy.fft as scfft
 import time
-from ..Utilities import TypeChecker
+from ...Utilities import TypeChecker
 import matplotlib.pyplot as plt
 
 
