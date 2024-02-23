@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    basedir = "InversionLS/Expt/marmousi/"
+    basedir = "InversionLS/Expt/seiscope/"
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
@@ -15,11 +15,7 @@ if __name__ == "__main__":
 
     print("\n\n---------------------------------------------")
     print("---------------------------------------------")
-    print("Compute true data...")
+    print("Set zero initial perturbation and wavefields...")
     print("\n")
 
-    num_procs = obj.num_sources
-    max_iter = 200
-    tol = 1e-5
-    verbose = False
-    obj.compute_true_data(num_procs=obj.num_sources, max_iter=max_iter, tol=tol, verbose=verbose)
+    obj.set_zero_initial_pert_wavefields()

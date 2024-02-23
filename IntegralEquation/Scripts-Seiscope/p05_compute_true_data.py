@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    basedir = "InversionLS/Expt/marmousi/"
+    basedir = "InversionLS/Expt/seiscope/"
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
