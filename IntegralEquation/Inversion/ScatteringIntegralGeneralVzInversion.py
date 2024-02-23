@@ -390,7 +390,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         self._num_k_values = self._k_values.shape[0]
 
-        path = self.__k_values_filename()
+        path = self.k_values_filename()
         np.savez(path, self._k_values)
 
         self._state += 1
@@ -432,7 +432,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         # Write to file
         for i in range(self._num_k_values):
-            path = self.__source_filename(i=i)
+            path = self.source_filename(i=i)
             np.savez_compressed(path, source_list[i])
 
         self._num_sources = num_sources
@@ -504,7 +504,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             y = x * amplitude_list[kk]
             y = y.astype(self._precision)
 
-            path = self.__source_filename(i=kk)
+            path = self.source_filename(i=kk)
             np.savez_compressed(path, y)
 
         self._num_sources = num_sources
@@ -541,7 +541,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 self._m,
                 self._sigma_greens_func,
                 self._precision,
-                self.__greens_func_filedir(i=i)
+                self.greens_func_filedir(i=i)
             ) for i in range(self._num_k_values)
         ]
 
@@ -578,7 +578,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         )
 
         # Write to file
-        path = self.__true_model_pert_filename()
+        path = self.true_model_pert_filename()
         np.savez_compressed(path, model_pert)
         self._true_model_pert = model_pert
 
@@ -627,7 +627,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 data = ndarray(shape=(self._nz, self._nz, 2 * self._n - 1), dtype=self._precision, buffer=sm.buf)
                 data *= 0
 
-                green_func_filename = self.__greens_func_filename(i=k)
+                green_func_filename = self.greens_func_filename(i=k)
                 with np.load(green_func_filename) as f:
                     data += f["arr_0"]
 
@@ -647,12 +647,12 @@ class ScatteringIntegralGeneralVzInversion2d:
                         self._m,
                         self._sigma_greens_func,
                         self._precision,
-                        self.__greens_func_filedir(i=k),
+                        self.greens_func_filedir(i=k),
                         sm.name,
                         sm1.name,
                         i,
-                        self.__source_filename(i=k),
-                        self.__true_model_pert_filename(),
+                        self.source_filename(i=k),
+                        self.true_model_pert_filename(),
                         max_iter,
                         tol,
                         verbose
@@ -667,7 +667,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                             pbar.update()
 
                 # Write computed data to disk
-                np.savez_compressed(self.__true_data_filename(i=k), data1)
+                np.savez_compressed(self.true_data_filename(i=k), data1)
 
             print("\n\n")
 
@@ -696,7 +696,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         TypeChecker.check_int_bounds(x=num_k, lb=0, ub=self._num_k_values - 1)
         TypeChecker.check_int_bounds(x=num_source, lb=0, ub=self._num_sources - 1)
 
-        true_data_filename = self.__true_data_filename(i=num_k)
+        true_data_filename = self.true_data_filename(i=num_k)
 
         with np.load(true_data_filename) as f:
             true_data = f["arr_0"][num_source, :, :]
@@ -721,7 +721,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         # Set zero initial perturbation
         model_pert = np.zeros(shape=(self._nz, self._n), dtype=self._precision_real)
-        path = self.__model_pert_filename(iter_count=-1)
+        path = self.model_pert_filename(iter_count=-1)
         np.savez_compressed(path, model_pert)
 
         # Set zero initial wavefields
@@ -729,7 +729,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             wavefield = np.zeros(
                 shape=(self._num_sources, self._nz, self._n), dtype=self._precision
             )
-            path = self.__wavefield_filename(iter_count=-1, i=k)
+            path = self.wavefield_filename(iter_count=-1, i=k)
             np.savez_compressed(path, wavefield)
 
         self._state += 1
@@ -805,6 +805,31 @@ class ScatteringIntegralGeneralVzInversion2d:
         print("Green's functions related parameters\n")
         for key in self._params["greens func"].keys():
             print(key, ": ", self._params["greens func"][key])
+
+    def k_values_filename(self):
+        return os.path.join(self._basedir, "k-values.npz")
+
+    def source_filename(self, i):
+        return os.path.join(self._basedir, "sources/" + str(i) + ".npz")
+
+    def greens_func_filename(self, i):
+        return os.path.join(self._basedir, "greens_func/" + str(i) + "/green_func.npz")
+
+    def greens_func_filedir(self, i):
+        return os.path.join(self._basedir, "greens_func/" + str(i))
+
+    def true_model_pert_filename(self):
+        return os.path.join(self._basedir, "data/true_model_pert.npz")
+
+    def true_data_filename(self, i):
+        return os.path.join(self._basedir, "data/" + str(i) + ".npz")
+
+    def model_pert_filename(self, iter_count):
+
+        if iter_count == -1:
+            return os.path.join(self._basedir, "iterations/initial_model_pert.npz")
+        else:
+            return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/model_pert_update.npz")
 
     def __num_bytes_greens_func(self):
 
@@ -894,7 +919,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             # Initialize class members
             if self._state >= 1:
 
-                path = self.__k_values_filename()
+                path = self.k_values_filename()
                 self._k_values = np.load(path)["arr_0"]
                 self._num_k_values = self._k_values.shape[0]
 
@@ -902,13 +927,12 @@ class ScatteringIntegralGeneralVzInversion2d:
 
             if self._state >= 2:
 
-                path = self.__source_filename(i=0)
+                path = self.source_filename(i=0)
                 x = np.load(path)["arr_0"]
                 num_sources = x.shape[0]
 
-                self._source_list = []
                 for i in range(self._num_k_values):
-                    path = self.__source_filename(i=i)
+                    path = self.source_filename(i=i)
                     x = np.load(path)["arr_0"]
                     TypeChecker.check_ndarray(
                         x=x,
@@ -916,7 +940,6 @@ class ScatteringIntegralGeneralVzInversion2d:
                         dtypes=(self._precision,),
                         nan_inf=True
                     )
-                    self._source_list.append(x)
 
                 self._num_sources = num_sources
 
@@ -925,7 +948,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             if self._state >= 3:
 
                 for i in range(self._num_k_values):
-                    path = self.__greens_func_filename(i=i)
+                    path = self.greens_func_filename(i=i)
                     x = np.load(path)["arr_0"]
                     if x.shape != (self._nz, self._nz, 2 * (self._n - 1) + 1):
                         raise ValueError("Green's function shape does not match.")
@@ -934,7 +957,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
             if self._state >= 4:
 
-                path = self.__true_model_pert_filename()
+                path = self.true_model_pert_filename()
                 true_model_pert = np.load(path)["arr_0"]
 
                 TypeChecker.check_ndarray(
@@ -952,7 +975,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
                 for i in range(self._num_k_values):
 
-                    path = self.__true_data_filename(i=i)
+                    path = self.true_data_filename(i=i)
                     with np.load(path) as f:
                         true_data_k = f["arr_0"]
 
@@ -968,7 +991,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             if self._state >= 6:
 
                 # Check initial model pert
-                path = self.__model_pert_filename(iter_count=-1)
+                path = self.model_pert_filename(iter_count=-1)
                 model_pert = np.load(path)["arr_0"]
 
                 TypeChecker.check_ndarray(
@@ -981,7 +1004,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 # Check initial wavefields
                 for i in range(self._num_k_values):
 
-                    path = self.__wavefield_filename(iter_count=-1, i=i)
+                    path = self.wavefield_filename(iter_count=-1, i=i)
                     with np.load(path) as f:
                         wavefield_k = f["arr_0"]
 
@@ -997,32 +1020,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             if self._state >= 7:
                 pass
 
-    def __k_values_filename(self):
-        return os.path.join(self._basedir, "k-values.npz")
-
-    def __source_filename(self, i):
-        return os.path.join(self._basedir, "sources/" + str(i) + ".npz")
-
-    def __greens_func_filename(self, i):
-        return os.path.join(self._basedir, "greens_func/" + str(i) + "/green_func.npz")
-
-    def __greens_func_filedir(self, i):
-        return os.path.join(self._basedir, "greens_func/" + str(i))
-
-    def __true_model_pert_filename(self):
-        return os.path.join(self._basedir, "data/true_model_pert.npz")
-
-    def __true_data_filename(self, i):
-        return os.path.join(self._basedir, "data/" + str(i) + ".npz")
-
-    def __model_pert_filename(self, iter_count):
-
-        if iter_count == -1:
-            return os.path.join(self._basedir, "iterations/initial_model_pert.npz")
-        else:
-            return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/model_pert_update.npz")
-
-    def __wavefield_filename(self, iter_count, i):
+    def wavefield_filename(self, iter_count, i):
 
         if iter_count == -1:
             return os.path.join(self._basedir, "iterations/initial_wavefield_" + str(i) + ".npz")
