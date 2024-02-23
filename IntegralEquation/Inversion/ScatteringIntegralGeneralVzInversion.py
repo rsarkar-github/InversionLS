@@ -500,7 +500,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             x[source_num, :, :] += sou
 
         for kk in range(self._num_k_values):
-            print("Creating sources for k number and writing sources to disk...", kk)
+            print("Creating sources for k number " + str(kk) + ", and writing sources to disk...")
             y = x * amplitude_list[kk]
             y = y.astype(self._precision)
 
