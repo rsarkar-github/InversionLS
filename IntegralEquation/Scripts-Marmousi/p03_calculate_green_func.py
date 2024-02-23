@@ -3,7 +3,7 @@ from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralG
 
 if __name__ == "__main__":
 
-    basedir = "InversionLS/Expt/marmousi1/"
+    basedir = "InversionLS/Expt/marmousi/"
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
@@ -14,5 +14,5 @@ if __name__ == "__main__":
     print("---------------------------------------------")
     print("Calculating Green's functions...")
     print("\n")
-    num_procs = 2
+    num_procs = 43
     obj.calculate_greens_func(num_procs=num_procs)
