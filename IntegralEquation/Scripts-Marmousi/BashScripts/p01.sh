@@ -5,4 +5,4 @@ source .bashrc
 conda activate py39
 cd /home/rsarkar/Research/Thesis
 
-python -m InversionLS.IntegralEquation.Scripts.p01_create_params_jsonfile
+python -m InversionLS.IntegralEquation.Scripts-Marmousi.p01_create_params_jsonfile
