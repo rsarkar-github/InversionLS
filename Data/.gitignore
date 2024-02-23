@@ -1,7 +1,9 @@
 *
 !.gitignore
-!sigsbee.npz
-!marmousi-vp.npz
-!marmousi-vp-interp-compact.npz
-!marmousi-vp-vz-interp.npz
-!marmousi-vp-vz-interp-2d.npz
+!marmousi-new-2d.npz
+!marmousi-new-vz-2d.npz
+!seiscope-new-2d.npz
+!seiscope-new-vz-2d.npz
+!sigsbee-new-2d.npz
+!sigsbee-new-vz-2d.npz
+!vp-log-horizontal-well.npy

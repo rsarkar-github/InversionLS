@@ -7,25 +7,26 @@ from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralG
 
 if __name__ == "__main__":
 
-    basedir = "InversionLS/Expt/marmousi1/"
+    basedir = "InversionLS/Expt/marmousi/"
     if not os.path.exists(basedir):
         os.makedirs(basedir)
 
     # Load Marmousi files
-    with np.load("InversionLS/Data/marmousi-vp-vz-interp.npz") as data:
-        vp_vz_interp = data["arr_0"]
-    with np.load("InversionLS/Data/marmousi-vp-vz-interp-2d.npz") as data:
-        vp_vz_interp_2d = data["arr_0"]
-    with np.load("InversionLS/Data/marmousi-vp-interp-compact.npz") as data:
-        vp_interp_compact = data["arr_0"]
+    with np.load("InversionLS/Data/marmousi-new-vz-2d.npz") as data:
+        vp_vz_2d = data["arr_0"]
+    with np.load("InversionLS/Data/marmousi-new-2d.npz") as data:
+        vp_2d = data["arr_0"]
 
-    shutil.copy("InversionLS/Data/marmousi-vp-vz-interp.npz", os.path.join(basedir, "vp_vz.npz"))
-    shutil.copy("InversionLS/Data/marmousi-vp-vz-interp-2d.npz", os.path.join(basedir, "vp_vz_2d.npz"))
-    shutil.copy("InversionLS/Data/marmousi-vp-interp-compact.npz", os.path.join(basedir, "vp_true_2d.npz"))
+    shutil.copy("InversionLS/Data/marmousi-new-vz-2d.npz", os.path.join(basedir, "vp_vz_2d.npz"))
+    shutil.copy("InversionLS/Data/marmousi-new-2d.npz", os.path.join(basedir, "vp_true_2d.npz"))
 
     dx = dz = 15.0
-    nz, nx = vp_vz_interp_2d.shape
+    nz, nx = vp_vz_2d.shape
     print("nz =", nz, ", nx =", nx)
+
+    # Save 1D vp_vz as numpy array
+    vp_vz = np.reshape(vp_vz_2d[:, 0], newshape=(nz, 1))
+    np.savez(os.path.join(basedir, "vp_vz.npz"), vp_vz)
 
     # Calculate a, b values
     extent_z = (nz - 1) * dz / 1000
@@ -37,9 +38,12 @@ if __name__ == "__main__":
     print("scale_fac = ", scale_fac, ", a = ", a, ", b = ", b)
 
     # Set m, sigma, num_threads
-    m = 3
-    sigma = 3 * (1.0 / nx) / m
+    m = 4
+    sigma = 2 * (1.0 / nx) / m     # approximately 0.0015
     num_threads = 10
+
+    # Set receiver locs
+    rec_locs = [(1, i) for i in range(0, nx)]
 
     params = {
         "geometry": {
@@ -48,12 +52,13 @@ if __name__ == "__main__":
             "n": nx,
             "nz": nz
         },
+        "rec_locs": rec_locs,
         "precision": "float",
         "greens func": {
             "m": m,
             "sigma": sigma,
             "num threads": num_threads,
-            "vz file path": basedir + "vp_vz.npz"
+            "vz file path": os.path.join(basedir, "vp_vz.npz")
         }
     }
     with open(os.path.join(basedir, "params.json"), "w") as file:

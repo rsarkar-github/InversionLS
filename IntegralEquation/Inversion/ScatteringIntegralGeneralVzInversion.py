@@ -16,6 +16,7 @@ from tqdm import tqdm
 from ..Solver.ScatteringIntegralGeneralVz import TruncatedKernelGeneralVz2d
 from ...Utilities.JsonTools import update_json
 from ...Utilities import TypeChecker
+from ...Utilities.LinearSolvers import gmres_counter
 
 
 def green_func_calculate_mp_helper_func(params):
@@ -82,7 +83,7 @@ def true_data_calculate_mp_helper_func(params):
 
     op_.set_parameters(
         n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
-        green_func_dir=green_func_dir_, num_threads=1,
+        green_func_dir=green_func_dir_, num_threads=1, green_func_set=False,
         no_mpi=True, verbose=False
     )
 
@@ -121,16 +122,6 @@ def true_data_calculate_mp_helper_func(params):
         op_.apply_kernel(u=v, output=u, adj=True, add=False)
         return np.reshape(v - (k_ ** 2) * u * psi_, newshape=(nz_ * n_, 1))
 
-    def make_callback():
-        closure_variables = dict(counter=0, residuals=[])
-
-        def callback(residuals):
-            closure_variables["counter"] += 1
-            closure_variables["residuals"].append(residuals)
-            print("Shot num = ", num_source_, ", ", closure_variables["counter"], residuals)
-
-        return callback
-
     linop_lse = LinearOperator(
         shape=(nz_ * n_, nz_ * n_),
         matvec=func_matvec,
@@ -146,6 +137,7 @@ def true_data_calculate_mp_helper_func(params):
 
     # ------------------------------------------------------
     # Solve for solution
+    counter = gmres_counter()
     start_t = time.time()
     if verbose_:
         sol, exitcode = gmres(
@@ -155,7 +147,7 @@ def true_data_calculate_mp_helper_func(params):
             restart=max_iter_,
             atol=0,
             tol=tol_,
-            callback=make_callback()
+            callback=counter
         )
         true_data_[num_source_, :, :] += np.reshape(sol, newshape=(nz_, n_))
         end_t = time.time()
@@ -202,6 +194,10 @@ class ScatteringIntegralGeneralVzInversion2d:
             If restart is True, then restart_code decides from where to restart
         """
 
+        TypeChecker.check(x=basedir, expected_type=(str,))
+        TypeChecker.check(x=restart, expected_type=(bool,))
+        TypeChecker.check_int_bounds(x=restart_code, lb=0, ub=7)
+
         self._basedir = basedir
         self._restart = restart
 
@@ -226,7 +222,30 @@ class ScatteringIntegralGeneralVzInversion2d:
         self._a = float(self._params["geometry"]["a"])
         self._b = float(self._params["geometry"]["b"])
 
+        TypeChecker.check(x=self._n, expected_type=(int,))
+        if self._n % 2 != 1 or self._n < 3:
+            raise ValueError("n must be an odd integer >= 3")
+
+        TypeChecker.check(x=self._nz, expected_type=(int,))
+        if self._nz < 2:
+            raise ValueError("n must be an integer >= 2")
+
+        TypeChecker.check(x=self._a, expected_type=(float,))
+        TypeChecker.check_float_strict_lower_bound(x=self._b, lb=self._a)
+
+        # Receiver locations
+        self._rec_locs = list(self._params["rec_locs"])
+        self._num_rec = len(self._rec_locs)
+
+        TypeChecker.check_int_positive(x=self._num_rec)
+
+        for i in range(self._num_rec):
+            TypeChecker.check_int_bounds(x=len(self._rec_locs[i]), lb=2, ub=2)
+            TypeChecker.check_int_bounds(x=self._rec_locs[i][0], lb=0, ub=self._nz - 1)
+            TypeChecker.check_int_bounds(x=self._rec_locs[i][1], lb=0, ub=self._n - 1)
+
         # Precision for calculation of Green's functions
+        TypeChecker.check(x=self._params["precision"], expected_type=(float,))
         if self._params["precision"] == "float":
             self._precision = np.complex64
             self._precision_real = np.float32
@@ -246,6 +265,11 @@ class ScatteringIntegralGeneralVzInversion2d:
         with np.load(file_name) as f:
             self._vz = np.reshape(f["arr_0"], newshape=(self._nz, 1))
 
+        TypeChecker.check_int_positive(self._m)
+        TypeChecker.check_float_positive(x=self._sigma_greens_func)
+        TypeChecker.check_int_positive(x=self._num_threads_greens_func_calc)
+        TypeChecker.check_ndarray(x=self._vz, shape=(self._nz, 1), dtypes=(np.float32,), lb=0.1)
+
         # Initialize state
         print("\n\n---------------------------------------------")
         print("---------------------------------------------")
@@ -256,7 +280,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             self._state = 0
             update_json(filename=self._param_file, key="state", val=self._state)
 
-        # This call checks if restart_code can be applied, and resets self._state
+        # This checks if restart_code can be applied, and resets self._state
         self.__check_restart_mode()
         print("state = ", self._state, ", ", self.__state_code(self._state))
 
@@ -266,7 +290,6 @@ class ScatteringIntegralGeneralVzInversion2d:
         self._k_values = None
         self._num_k_values = None
         self._num_sources = None
-        self._source_list = None
         self._true_model_pert = None
 
         # If self._state == 6, the next field is unchanged
@@ -303,6 +326,18 @@ class ScatteringIntegralGeneralVzInversion2d:
         return self._m
 
     @property
+    def num_rec(self):
+        return self._num_rec
+
+    @property
+    def rec_locs(self):
+        return self._rec_locs
+
+    @property
+    def vz(self):
+        return self._vz
+
+    @property
     def sigma_greens_func(self):
         return self._sigma_greens_func
 
@@ -317,10 +352,6 @@ class ScatteringIntegralGeneralVzInversion2d:
     @property
     def num_k_values(self):
         return self._num_k_values
-
-    @property
-    def source_list(self):
-        return self._source_list
 
     @property
     def num_sources(self):
@@ -404,7 +435,6 @@ class ScatteringIntegralGeneralVzInversion2d:
             np.savez_compressed(path, source_list[i])
 
         self._num_sources = num_sources
-        self._source_list = source_list
 
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
@@ -456,7 +486,6 @@ class ScatteringIntegralGeneralVzInversion2d:
         xgrid = np.linspace(start=-0.5, stop=0.5, num=self._n, endpoint=True)
         zg, xg = np.meshgrid(zgrid, xgrid, indexing="ij")
 
-        source_list = []
         x = np.zeros(shape=(num_sources, self._nz, self._n), dtype=np.float32)
 
         print("\n\n---------------------------------------------")
@@ -470,20 +499,14 @@ class ScatteringIntegralGeneralVzInversion2d:
             x[source_num, :, :] += sou
 
         for kk in range(self._num_k_values):
-            print("Creating sources for k number ", kk)
+            print("Creating sources for k number and writing sources to disk...", kk)
             y = x * amplitude_list[kk]
             y = y.astype(self._precision)
-            source_list.append(y)
 
-        # Write to file
-        print("\n")
-        print("Writing sources to disk...")
-        for kk in range(self._num_k_values):
             path = self.__source_filename(i=kk)
-            np.savez_compressed(path, source_list[kk])
+            np.savez_compressed(path, y)
 
         self._num_sources = num_sources
-        self._source_list = source_list
 
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
@@ -562,7 +585,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def compute_true_data(self, num_procs, max_iter=2000, tol=1e-6, verbose=True):
+    def compute_true_data(self, num_procs, max_iter=2000, tol=1e-5, verbose=True):
         """
         Compute the true data.
 
@@ -714,7 +737,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
     def perform_inversion_update_wavefield(
             self, iter_num=None,
-            lambda_arr, mu_arr,
+            lambda_arr=None, mu_arr=None,
             max_iter=100, solver="lsmr", tol=1e-6
     ):
         # TODO: fix this
@@ -741,7 +764,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 print("Input files not available. Cannot proceed.")
                 return
 
-            for k in range(self._num_k_values):
+            # for k in range(self._num_k_values):
 
 
 
