@@ -57,7 +57,6 @@ if __name__ == "__main__":
         "greens func": {
             "m": m,
             "sigma": sigma,
-            "num threads": num_threads,
             "vz file path": os.path.join(basedir, "vp_vz.npz")
         },
         "rec_locs": rec_locs

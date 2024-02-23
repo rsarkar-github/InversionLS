@@ -262,7 +262,6 @@ class ScatteringIntegralGeneralVzInversion2d:
         # Green's function related group
         self._m = int(self._params["greens func"]["m"])
         self._sigma_greens_func = float(self._params["greens func"]["sigma"])
-        self._num_threads_greens_func_calc = int(self._params["greens func"]["num threads"])
 
         file_name = self._params["greens func"]["vz file path"]
         with np.load(file_name) as f:
@@ -270,7 +269,6 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         TypeChecker.check_int_positive(self._m)
         TypeChecker.check_float_positive(x=self._sigma_greens_func)
-        TypeChecker.check_int_positive(x=self._num_threads_greens_func_calc)
         TypeChecker.check_ndarray(x=self._vz, shape=(self._nz, 1), dtypes=(np.float32,), lb=0.1)
 
         # Initialize state
@@ -343,10 +341,6 @@ class ScatteringIntegralGeneralVzInversion2d:
     @property
     def sigma_greens_func(self):
         return self._sigma_greens_func
-
-    @property
-    def num_threads_greens_func_calc(self):
-        return self._num_threads_greens_func_calc
 
     @property
     def k_values(self):
