@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    basedir = "InversionLS/Expt/marmousi1/"
+    basedir = "InversionLS/Expt/marmousi/"
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
         restart_code=None
     )
+    scale_fac_inv = obj.scale_fac_inv
 
     print("\n\n---------------------------------------------")
     print("---------------------------------------------")
@@ -28,7 +29,7 @@ if __name__ == "__main__":
 
     xmax = 1.0
     zmax = (obj.b - obj.a)
-    extent = [0, 5 * xmax, 5 * zmax, 0]
+    extent = [0, scale_fac_inv * xmax, scale_fac_inv * zmax, 0]
 
     def plot(psi, extent, title, file_name=None):
         fig = plt.figure(figsize=(6, 3))  # define figure size
