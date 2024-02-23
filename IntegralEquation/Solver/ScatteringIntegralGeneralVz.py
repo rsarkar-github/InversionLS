@@ -393,6 +393,7 @@ class TruncatedKernelGeneralVz3d:
 
         TypeChecker.check(x=light_mode, expected_type=(bool,))
         self._initialized_flag = not light_mode
+        self._green_func_set_flag = not light_mode
 
         if not light_mode:
 
@@ -448,7 +449,7 @@ class TruncatedKernelGeneralVz3d:
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False):
+    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True, no_mpi=False, verbose=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5]^2.
 
@@ -463,10 +464,11 @@ class TruncatedKernelGeneralVz3d:
         :param m: Decimation factor for calculating Green's function on a fine grid.
         :param sigma: The standard deviation of delta to inject for Green's function calculation.
         :param precision: np.complex64 or np.complex128
+        :param green_func_dir: Name of directory where to read / write Green's function from.
         :param num_threads: Maximum number of threads to use
+        :param green_func_set: bool (if False do not set Green's function)
         :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
-        :param green_func_dir: Name of directory where to read / write Green's function from.
         """
 
         print("\n\nInitializing the class")
@@ -509,6 +511,7 @@ class TruncatedKernelGeneralVz3d:
                 print("\n")
 
         TypeChecker.check_int_positive(x=num_threads)
+        TypeChecker.check(x=green_func_set, expected_type=(bool,))
         TypeChecker.check(x=no_mpi, expected_type=(bool,))
         TypeChecker.check(x=verbose, expected_type=(bool,))
 
@@ -530,8 +533,10 @@ class TruncatedKernelGeneralVz3d:
         self._cutoff2 = 1.5
 
         self.__initialize_class(green_func_flag=False)
-        self.__read_green_func()
+        if green_func_set:
+            self.__read_green_func()
         self._initialized_flag = True
+        self._green_func_set_flag = green_func_set
 
     def apply_kernel(self, u, output, adj=False, add=False):
         """
@@ -541,8 +546,8 @@ class TruncatedKernelGeneralVz3d:
         :param add: Boolean flag (whether to add result to output)
         """
 
-        if not self._initialized_flag:
-            raise ValueError("Class initialized in light mode, cannot perform operation.")
+        if not self._green_func_set_flag:
+            raise ValueError("Class initialized in light mode or Green's function not set, cannot perform operation.")
 
         # Check types of input
         if u.dtype != self._precision or output.dtype != self._precision:
@@ -643,8 +648,8 @@ class TruncatedKernelGeneralVz3d:
 
         :param green_func_dir: Directory to save green's function to. If None, use value from class.
         """
-        if not self._initialized_flag:
-            raise ValueError("Class initialized in light mode, cannot perform operation.")
+        if not self._green_func_set_flag:
+            raise ValueError("Class initialized in light mode or Green's function not set, cannot perform operation.")
 
         else:
             file_dir = self._green_func_dir
@@ -699,8 +704,8 @@ class TruncatedKernelGeneralVz3d:
 
     @property
     def greens_func(self):
-        if not self._initialized_flag:
-            raise ValueError("Class initialized in light mode, cannot perform operation.")
+        if not self._green_func_set_flag:
+            raise ValueError("Class initialized in light mode or Green's function not set, cannot perform operation.")
         else:
             return self._green_func
 
@@ -717,6 +722,7 @@ class TruncatedKernelGeneralVz3d:
         )
 
         self._green_func = green_func
+        self._green_func_set_flag = True
 
     @property
     def n(self):
@@ -1191,6 +1197,7 @@ class TruncatedKernelGeneralVz2d:
 
         TypeChecker.check(x=light_mode, expected_type=(bool,))
         self._initialized_flag = not light_mode
+        self._green_func_set_flag = not light_mode
 
         if not light_mode:
 
@@ -1245,7 +1252,7 @@ class TruncatedKernelGeneralVz2d:
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False):
+    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True, no_mpi=False, verbose=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5].
 
@@ -1260,10 +1267,11 @@ class TruncatedKernelGeneralVz2d:
         :param m: Decimation factor for calculating Green's function on a fine grid.
         :param sigma: The standard deviation of delta to inject for Green's function calculation.
         :param precision: np.complex64 or np.complex128
+        :param green_func_dir: Name of directory where to read / write Green's function from.
         :param num_threads: Maximum number of threads to use
+        :param green_func_set: bool (if False do not set Green's function)
         :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
-        :param green_func_dir: Name of directory where to read / write Green's function from.
         """
 
         print("\n\nInitializing the class")
@@ -1305,6 +1313,7 @@ class TruncatedKernelGeneralVz2d:
             print("\n")
 
         TypeChecker.check_int_positive(x=num_threads)
+        TypeChecker.check(x=green_func_set, expected_type=(bool,))
         TypeChecker.check(x=no_mpi, expected_type=(bool,))
         TypeChecker.check(x=verbose, expected_type=(bool,))
 
@@ -1326,8 +1335,10 @@ class TruncatedKernelGeneralVz2d:
         self._cutoff2 = 1.2
 
         self.__initialize_class(green_func_flag=False)
-        self.__read_green_func()
+        if green_func_set:
+            self.__read_green_func()
         self._initialized_flag = True
+        self._green_func_set_flag = green_func_set
 
     def apply_kernel(self, u, output, adj=False, add=False):
         """
@@ -1337,8 +1348,8 @@ class TruncatedKernelGeneralVz2d:
         :param add: Boolean flag (whether to add result to output)
         """
 
-        if not self._initialized_flag:
-            raise ValueError("Class initialized in light mode, cannot perform operation.")
+        if not self._green_func_set_flag:
+            raise ValueError("Class initialized in light mode or Green's function not set, cannot perform operation.")
 
         # Check types of input
         if u.dtype != self._precision or output.dtype != self._precision:
@@ -1416,8 +1427,9 @@ class TruncatedKernelGeneralVz2d:
         """
         :param green_func_dir: Directory to save green's function to. If None, use value from class.
         """
-        if not self._initialized_flag:
-            raise ValueError("Class initialized in light mode, cannot perform operation.")
+        if not self._green_func_set_flag:
+            raise ValueError("Class initialized in light mode or Green's function not set, cannot perform operation.")
+
         else:
             file_dir = self._green_func_dir
             if green_func_dir is not None:
@@ -1430,8 +1442,8 @@ class TruncatedKernelGeneralVz2d:
 
     @property
     def greens_func(self):
-        if not self._initialized_flag:
-            raise ValueError("Class initialized in light mode, cannot perform operation.")
+        if not self._green_func_set_flag:
+            raise ValueError("Class initialized in light mode or Green's function not set, cannot perform operation.")
         else:
             return self._green_func
 
@@ -1448,6 +1460,7 @@ class TruncatedKernelGeneralVz2d:
         )
 
         self._green_func = green_func
+        self._green_func_set_flag = True
 
     @property
     def n(self):
