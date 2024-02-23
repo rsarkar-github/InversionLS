@@ -315,6 +315,10 @@ class ScatteringIntegralGeneralVzInversion2d:
         return self._b
 
     @property
+    def scale_fac_inv(self):
+        return self._scale_fac_inv
+
+    @property
     def precision(self):
         return self._precision
 
