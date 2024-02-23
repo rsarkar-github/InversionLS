@@ -369,7 +369,8 @@ def func_read3D(params):
 
 class TruncatedKernelGeneralVz3d:
 
-    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False, light_mode=False):
+    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False,
+                 verbose=False, light_mode=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5]^2.
 
@@ -449,7 +450,8 @@ class TruncatedKernelGeneralVz3d:
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True, no_mpi=False, verbose=False):
+    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True,
+                       no_mpi=False, verbose=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5]^2.
 
@@ -723,6 +725,29 @@ class TruncatedKernelGeneralVz3d:
 
         self._green_func = green_func
         self._green_func_set_flag = True
+
+    @property
+    def green_func_bytes(self):
+
+        if not self._initialized_flag:
+            raise ValueError("Class initialized in light mode, cannot perform operation.")
+
+        # Calculate number of bytes
+        num_bytes = self._nz * self._nz * self._num_bins_non_neg * self._num_bins_non_neg
+        if self._precision == np.complex64:
+            num_bytes *= 8
+        if self._precision == np.complex128:
+            num_bytes *= 16
+
+        return num_bytes
+
+    @property
+    def green_func_shape(self):
+
+        if not self._initialized_flag:
+            raise ValueError("Class initialized in light mode, cannot perform operation.")
+
+        return (self._nz, self._nz, self._num_bins_non_neg, self._num_bins_non_neg)
 
     @property
     def n(self):
@@ -1173,7 +1198,8 @@ class TruncatedKernelGeneralVz3d:
 
 class TruncatedKernelGeneralVz2d:
 
-    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False, light_mode=False):
+    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False,
+                 verbose=False, light_mode=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5].
 
@@ -1252,7 +1278,8 @@ class TruncatedKernelGeneralVz2d:
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True, no_mpi=False, verbose=False):
+    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True,
+                       no_mpi=False, verbose=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5].
 
@@ -1461,6 +1488,29 @@ class TruncatedKernelGeneralVz2d:
 
         self._green_func = green_func
         self._green_func_set_flag = True
+
+    @property
+    def green_func_bytes(self):
+
+        if not self._initialized_flag:
+            raise ValueError("Class initialized in light mode, cannot perform operation.")
+
+        # Calculate number of bytes
+        num_bytes = self._nz * self._nz * self._num_bins_non_neg
+        if self._precision == np.complex64:
+            num_bytes *= 8
+        if self._precision == np.complex128:
+            num_bytes *= 16
+
+        return num_bytes
+
+    @property
+    def green_func_shape(self):
+
+        if not self._initialized_flag:
+            raise ValueError("Class initialized in light mode, cannot perform operation.")
+
+        return (self._nz, self._nz, self._num_bins_non_neg)
 
     @property
     def n(self):
@@ -1727,7 +1777,6 @@ class TruncatedKernelGeneralVz2d:
     def __create_sources_for_helmholtz(sources, z1, x1, num_slices, start_index_z, dz, m, sigma):
 
         for num_slice in numba.prange(num_slices):
-
             print("Computing source number ", num_slice)
 
             gaussian_center_z = (start_index_z + num_slice * m) * dz
