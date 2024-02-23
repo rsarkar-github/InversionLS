@@ -25,7 +25,7 @@ if __name__ == "__main__":
     print("nz =", nz, ", nx =", nx)
 
     # Save 1D vp_vz as numpy array
-    vp_vz = np.reshape(vp_vz_2d[:, 0], newshape=(nz, 1))
+    vp_vz = np.reshape(vp_vz_2d[:, 0].astype(np.float32), newshape=(nz, 1))
     np.savez(os.path.join(basedir, "vp_vz.npz"), vp_vz)
 
     # Calculate a, b values
@@ -50,16 +50,17 @@ if __name__ == "__main__":
             "a": a,
             "b": b,
             "n": nx,
-            "nz": nz
+            "nz": nz,
+            "scale_fac_inv": 1.0 / scale_fac
         },
-        "rec_locs": rec_locs,
         "precision": "float",
         "greens func": {
             "m": m,
             "sigma": sigma,
             "num threads": num_threads,
             "vz file path": os.path.join(basedir, "vp_vz.npz")
-        }
+        },
+        "rec_locs": rec_locs
     }
     with open(os.path.join(basedir, "params.json"), "w") as file:
         json.dump(params, file, indent=4)

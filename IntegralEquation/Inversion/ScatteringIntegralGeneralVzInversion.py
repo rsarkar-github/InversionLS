@@ -190,13 +190,14 @@ class ScatteringIntegralGeneralVzInversion2d:
             Base directory for storing all results
         :param restart: bool
             Whether to run the class initialization in restart mode or not
-        :param restart_code: int
+        :param restart_code: int or None
             If restart is True, then restart_code decides from where to restart
         """
 
         TypeChecker.check(x=basedir, expected_type=(str,))
         TypeChecker.check(x=restart, expected_type=(bool,))
-        TypeChecker.check_int_bounds(x=restart_code, lb=0, ub=7)
+        if restart_code is not None:
+            TypeChecker.check_int_bounds(x=restart_code, lb=0, ub=7)
 
         self._basedir = basedir
         self._restart = restart
@@ -221,6 +222,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         self._nz = int(self._params["geometry"]["nz"])
         self._a = float(self._params["geometry"]["a"])
         self._b = float(self._params["geometry"]["b"])
+        self._scale_fac_inv = float(self._params["geometry"]["scale_fac_inv"])
 
         TypeChecker.check(x=self._n, expected_type=(int,))
         if self._n % 2 != 1 or self._n < 3:
@@ -232,6 +234,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         TypeChecker.check(x=self._a, expected_type=(float,))
         TypeChecker.check_float_strict_lower_bound(x=self._b, lb=self._a)
+        TypeChecker.check_float_positive(x=self._scale_fac_inv)
 
         # Receiver locations
         self._rec_locs = list(self._params["rec_locs"])
@@ -245,7 +248,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             TypeChecker.check_int_bounds(x=self._rec_locs[i][1], lb=0, ub=self._n - 1)
 
         # Precision for calculation of Green's functions
-        TypeChecker.check(x=self._params["precision"], expected_type=(float,))
+        TypeChecker.check(x=self._params["precision"], expected_type=(str,))
         if self._params["precision"] == "float":
             self._precision = np.complex64
             self._precision_real = np.float32
@@ -785,6 +788,11 @@ class ScatteringIntegralGeneralVzInversion2d:
         print("Geometry related parameters\n")
         for key in self._params["geometry"].keys():
             print(key, ": ", self._params["geometry"][key])
+
+        print("\n---------------------------------------------")
+        print("Receiver locations related parameters\n")
+        for i, j in enumerate(self._params["rec_locs"]):
+            print("Receiver " + str(i), " location : ", j)
 
         print("\n---------------------------------------------")
         print("Precision related parameters\n")
