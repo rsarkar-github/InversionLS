@@ -20,7 +20,7 @@ if __name__ == "__main__":
     print("\n")
 
     num_procs = min(obj.num_sources, mp.cpu_count(), 100)
-    max_iter = 200
+    max_iter = 5000
     tol = 1e-5
     verbose = False
     obj.compute_true_data(num_procs=num_procs, max_iter=max_iter, tol=tol, verbose=verbose)
