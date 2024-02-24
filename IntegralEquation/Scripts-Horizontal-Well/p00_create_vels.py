@@ -32,7 +32,7 @@ if __name__ == "__main__":
             vmax = np.max(vel)
 
         fig = plt.figure(figsize=(6, 3))  # define figure size
-        image = plt.imshow(vel, cmap="jet", interpolation='nearest', extent=extent, vmin=vmin, vmax=vmax)
+        image = plt.imshow(vel, cmap="jet", interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
 
         cbar = plt.colorbar(aspect=aspect_cbar, pad=0.02)
         cbar.set_label('Vp [km/s]', labelpad=10)
@@ -63,8 +63,8 @@ if __name__ == "__main__":
     # plot(vel=vz, extent=extent, title="Horizontal well v(z) model")
 
     # Interpolate the vp velocities to 2.5 m rid
-    dz_new = 1.0   # grid spacing in m
-    dx_new = 2.5   # grid spacing in m
+    dz_new = 2.0   # grid spacing in m
+    dx_new = 2.0   # grid spacing in m
     nz_new = int(zmax / dz_new) + 1   # 80
     nx_new = 501
     print("nz1 = ", nz1, ", nz_new = ", nz_new)
@@ -111,11 +111,11 @@ if __name__ == "__main__":
     vp_pert = vz_interp * 0.0
     vp_pert += np.random.normal(size=[vp_pert.shape[0], vp_pert.shape[1]], loc=0.0, scale=0.5)
 
-    vp_pert = gaussian_filter(vp_pert, sigma=[2,10])
+    vp_pert = gaussian_filter(vp_pert, sigma=[1,10])
 
     # Apply crop
-    vp_pert[0:26, :] = 0
-    vp_pert[40:, :] = 0
+    vp_pert[0:14, :] = 0
+    vp_pert[20:, :] = 0
     vp_pert[:, 0:25] = 0
     vp_pert[:, 475:] = 0
 

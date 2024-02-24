@@ -20,8 +20,8 @@ if __name__ == "__main__":
     shutil.copy("InversionLS/Data/horizontal-well-new-vz-2d.npz", os.path.join(basedir, "vp_vz_2d.npz"))
     shutil.copy("InversionLS/Data/horizontal-well-new-2d.npz", os.path.join(basedir, "vp_true_2d.npz"))
 
-    dx = 2.5
-    dz = 1.0
+    dx = 2.0
+    dz = 2.0
     nz, nx = vp_vz_2d.shape
     print("nz =", nz, ", nx =", nx)
 
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     num_threads = 10
 
     # Set receiver locs
-    rec_locs = [(41, i) for i in range(0, nx)]
+    rec_locs = [(21, i) for i in range(0, nx)]
 
     params = {
         "geometry": {
@@ -62,7 +62,6 @@ if __name__ == "__main__":
         },
         "rec_locs": rec_locs
     }
-    print(params["geometry"])
     with open(os.path.join(basedir, "params.json"), "w") as file:
         json.dump(params, file, indent=4)
 
