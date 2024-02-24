@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     # Set m, sigma, num_threads
     m = 4
-    sigma = 2 * (1.0 / (nx - 1)) / m     # approximately 0.0015
+    sigma = 2 * (1.0 / (nx - 1)) / m
     num_threads = 10
 
     # Set receiver locs
@@ -62,6 +62,7 @@ if __name__ == "__main__":
         },
         "rec_locs": rec_locs
     }
+    print(params["geometry"])
     with open(os.path.join(basedir, "params.json"), "w") as file:
         json.dump(params, file, indent=4)
 
