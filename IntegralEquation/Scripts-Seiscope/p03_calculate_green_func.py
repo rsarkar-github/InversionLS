@@ -14,5 +14,5 @@ if __name__ == "__main__":
     print("---------------------------------------------")
     print("Calculating Green's functions...")
     print("\n")
-    num_procs = 2
+    num_procs = 4
     obj.calculate_greens_func(num_procs=num_procs)

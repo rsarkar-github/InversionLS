@@ -1,6 +1,7 @@
 import os
 import json
 import numpy as np
+from scipy.ndimage import gaussian_filter
 import shutil
 from scipy.interpolate import RegularGridInterpolator
 import matplotlib.pyplot as plt
@@ -15,12 +16,12 @@ if __name__ == "__main__":
         os.makedirs(basedir)
 
     # Load horizontal well model
-    vp = np.load("InversionLS/Data/vp-log-horizontal-well.npy") / 1000.0
-    nz = vp.shape[0]
+    vz = np.load("InversionLS/Data/vp-log-horizontal-well.npy") / 1000.0
+    nz = vz.shape[0]
     nx = 2000
 
-    vp = np.zeros((nz, nx)) + np.reshape(vp, newshape=(nz, 1))
-    print(vp.shape)
+    vz = np.zeros((nz, nx)) + np.reshape(vz, newshape=(nz, 1))
+    print(vz.shape)
 
     def plot(vel, extent, title, file_name=None):
         fig = plt.figure(figsize=(6, 3))  # define figure size
@@ -36,3 +37,52 @@ if __name__ == "__main__":
             plt.savefig(file_name, format="pdf", bbox_inches="tight", pad_inches=0.01)
 
         plt.show()
+
+
+    # Smooth model
+    vz = gaussian_filter(vz, sigma=5)
+
+    # Crop model and calculate some parameters
+    dx = dz = 0.1524  # grid spacing in m
+    zdim = 80.0
+    nz1 = int(zdim / dz)
+    nz_start = 1350
+    vz = vz[nz_start: nz_start + nz1, :]
+
+    xmax = (nx - 1) * dx
+    zmax = (nz1 - 1) * dz
+    extent = [0, xmax, zmax, 0]
+    plot(vel=vz, extent=extent, title="Horizontal well v(z) model")
+
+    # Interpolate the vp velocities to 2.5 m rid
+    dz_new = 2.5   # grid spacing in m
+    nz_new = int(zmax / dz_new) + 1   # 32
+    nx_new = 501
+    print("nz1 = ", nz1, ", nz_new = ", nz_new)
+
+    def func_interp(vel):
+        """
+        Vel must have shape (nz1,).
+
+        :param vel: Velocity to interpolate on 0.1524m grid.
+        :return: Interpolated velocity on 2.5m grid.
+        """
+        zgrid_input = np.linspace(start=0, stop=zmax, num=nz1, endpoint=True).astype(np.float64)
+        interp = RegularGridInterpolator(zgrid_input, vel.astype(np.float64))
+
+        vel_interp = np.zeros(shape=(nz_new,), dtype=np.float64)
+
+        for i1 in range(nz_new):
+                point = np.array([i1 * dz_new])
+                vel_interp[i1] = interp(point)
+
+        return vel_interp
+
+    vz_trace = vz[:, 0]
+    vz_trace_interp = func_interp(vel=vz_trace)
+    vz_interp = np.zeros((nz_new, nx_new)) + np.reshape(vz_trace_interp, newshape=(nz, 1))
+
+    xmax_new = (nx_new - 1) * dz_new
+    zmax_new = (nz_new - 1) * dz_new
+    extent_new = [0, xmax, zmax, 0]
+    plot(vel=vz_interp, extent=extent_new, title="Horizontal well v(z) model interp")
