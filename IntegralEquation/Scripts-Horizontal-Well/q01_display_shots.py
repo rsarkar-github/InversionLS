@@ -32,7 +32,7 @@ if __name__ == "__main__":
     src = source[num_source, :, :]
 
     scale = 1.0
-    plt.imshow(np.real(src), cmap="Greys", extent=extent, aspect=1, vmax=scale, vmin=-scale)
+    plt.imshow(np.real(src), cmap="Greys", extent=extent, aspect=10, vmax=scale, vmin=-scale)
     plt.xlabel(r'$x_1$ [km]')
     plt.ylabel(r'$z$ [km]')
     plt.show()

@@ -27,7 +27,7 @@ if __name__ == "__main__":
     xmax = 1.0
     zmax = (obj.b - obj.a)
     extent = [0, xmax, zmax, 0]
-    plt.imshow(np.real(data), cmap="Greys", extent=extent, aspect=1)
+    plt.imshow(np.real(data), cmap="Greys", extent=extent, aspect=10)
     plt.xlabel(r'$x_1$ [km]')
     plt.ylabel(r'$z$ [km]')
     plt.show()
