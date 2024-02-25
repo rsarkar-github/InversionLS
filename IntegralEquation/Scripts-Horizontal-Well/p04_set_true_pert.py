@@ -31,21 +31,22 @@ if __name__ == "__main__":
     zmax = (obj.b - obj.a)
     extent = [0, scale_fac_inv * xmax, scale_fac_inv * zmax, 0]
 
-    def plot(psi, extent, title, file_name=None):
+    def plot(psi, extent, title, aspect_ratio=10, file_name=None):
         fig = plt.figure(figsize=(6, 3))  # define figure size
-        image = plt.imshow(psi, cmap="Greys", interpolation='nearest', extent=extent)
+        image = plt.imshow(psi, cmap="Greys", interpolation='bicubic', extent=extent)
 
         cbar = plt.colorbar(aspect=10, pad=0.02)
         cbar.set_label('[s' + r'$^2 /$' + 'km' + r'$^2$' +']', labelpad=10)
         plt.title(title)
         plt.xlabel('x [km]')
         plt.ylabel('z [km]')
+        plt.gca().set_aspect(aspect_ratio)
 
         if file_name is not None:
             plt.savefig(file_name, format="pdf", bbox_inches="tight", pad_inches=0.01)
 
         plt.show()
 
-    plot(psi, extent, "True perturbation", os.path.join(basedir, "psi.pdf"))
+    plot(psi, extent, "True perturbation", 10, os.path.join(basedir, "psi.pdf"))
 
     obj.add_true_model_pert(model_pert=psi)
