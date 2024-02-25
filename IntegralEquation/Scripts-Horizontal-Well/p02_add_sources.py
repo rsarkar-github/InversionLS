@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     num_sources = 51
     xgrid = np.linspace(start=-0.5, stop=0.5, num=num_sources, endpoint=True)
-    zval = 41 * dz
+    zval = 21 * dz
     source_coords = np.zeros(shape=(num_sources, 2), dtype=np.float32)
     source_coords[:, 0] = zval
     source_coords[:, 1] = xgrid

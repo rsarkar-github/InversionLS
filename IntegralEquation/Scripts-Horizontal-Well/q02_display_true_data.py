@@ -12,7 +12,6 @@ if __name__ == "__main__":
         restart=True,
         restart_code=None
     )
-    scale_fac_inv = obj.scale_fac_inv
 
     print("Num k values = ", obj.num_k_values, ", Num sources = ", obj.num_sources)
 
@@ -23,16 +22,12 @@ if __name__ == "__main__":
     num_k_val = int(sys.argv[1])
     num_source = int(sys.argv[2])
 
+    data = obj.get_true_data(num_k=num_k_val, num_source=num_source)
+
     xmax = 1.0
     zmax = (obj.b - obj.a)
-    extent = [0, xmax * scale_fac_inv, zmax * scale_fac_inv, 0]
-
-    with np.load(obj.source_filename(i=num_k_val)) as data:
-        source = data["arr_0"]
-    src = source[num_source, :, :]
-
-    scale = 1.0
-    plt.imshow(np.real(src), cmap="Greys", extent=extent, aspect=1, vmax=scale, vmin=-scale)
+    extent = [0, xmax, zmax, 0]
+    plt.imshow(np.real(data), cmap="Greys", extent=extent, aspect=1)
     plt.xlabel(r'$x_1$ [km]')
     plt.ylabel(r'$z$ [km]')
     plt.show()
