@@ -795,9 +795,13 @@ class ScatteringIntegralGeneralVzInversion2d:
         # TODO
         pass
 
-    def set_zero_initial_pert_wavefields(self):
+    def set_zero_initial_pert_wavefields(self, num_procs=1):
         """
         Sets zero initial perturbation and wavefields
+
+        :param num_procs: int
+            number of processors for multiprocessing while computing objective function
+
         :return:
         """
 
@@ -822,6 +826,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         # Compute objective functions
         self.__compute_obj1(iter_count=-1)
+        self.__compute_obj2(iter_count=-1, iter_step=1, num_procs=num_procs)
 
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
@@ -1183,7 +1188,10 @@ class ScatteringIntegralGeneralVzInversion2d:
         # Write computed data to disk
         np.savez_compressed(self.__obj1_filename(iter_count=iter_count), obj1)
 
-    def __compute_obj2(self, iter_count, iter_step, num_procs):
+    def __compute_obj2(self, iter_count, iter_step, num_procs=1):
+
+        print("\n\n---------------------------------------------")
+        print("Computing LSE residual...\n")
 
         num_bytes_obj2_arr = self._num_k_values * self._num_sources * 8
 
@@ -1268,7 +1276,8 @@ class ScatteringIntegralGeneralVzInversion2d:
                         sm2.name,
                         sm3.name,
                         sm4.name,
-                        i
+                        i,
+                        k
                     ) for i in range(self._num_sources)
                 ]
 
