@@ -5,6 +5,7 @@ from scipy.sparse.linalg import LinearOperator, gmres, lsqr, lsmr
 import matplotlib.pyplot as plt
 import os
 import sys
+import numba
 import shutil
 import json
 import time
@@ -177,6 +178,88 @@ def true_data_calculate_mp_helper_func(params):
     # Release shared memory
     sm_.close()
     sm_true_data_.close()
+
+
+def compute_obj2(params):
+
+    # ------------------------------------------------------
+    # Read all parameters
+
+    n_ = int(params[0])
+    nz_ = int(params[1])
+    a_ = float(params[2])
+    b_ = float(params[3])
+    k_ = float(params[4])
+    vz_ = params[5]
+    m_ = int(params[6])
+    sigma_ = float(params[7])
+    precision_ = params[8]
+    precision_real_ = params[9]
+    green_func_dir_ = str(params[10])
+    num_k_values_ = int(params[11])
+    num_sources_ = int(params[12])
+    sm_obj2_name_ = str(params[13])
+    sm_green_func_name_ = str(params[14])
+    sm_source_name_ = str(params[15])
+    sm_wavefield_name_ = str(params[16])
+    sm_model_pert_name_ = str(params[17])
+    num_source_ = int(params[18])
+    num_k_ = int(params[19])
+
+    # ------------------------------------------------------
+    # Create Lippmann-Schwinger operator
+    # Attach to shared memory for Green's function
+
+    op_ = TruncatedKernelGeneralVz2d(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1,
+        no_mpi=True, verbose=False, light_mode=True
+    )
+
+    op_.set_parameters(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1, green_func_set=False,
+        no_mpi=True, verbose=False
+    )
+
+    sm_green_func_ = SharedMemory(sm_green_func_name_)
+    green_func_ = ndarray(shape=(nz_, nz_, 2 * n_ - 1), dtype=precision_, buffer=sm_green_func_.buf)
+    op_.greens_func = green_func_
+
+    # ------------------------------------------------------
+    # Attach to shared memory for obj2, source, wavefield, model_pert
+
+    sm_obj2_ = SharedMemory(sm_obj2_name_)
+    obj2_ = ndarray(shape=(num_k_values_, num_sources_), dtype=np.float64, buffer=sm_obj2_.buf)
+
+    sm_source_ = SharedMemory(sm_source_name_)
+    source_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_source_.buf)
+
+    sm_wavefield_ = SharedMemory(sm_wavefield_name_)
+    wavefield_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_wavefield_.buf)
+
+    sm_model_pert_ = SharedMemory(sm_model_pert_name_)
+    psi_ = ndarray(shape=(nz_, n_), dtype=precision_real_, buffer=sm_model_pert_.buf)
+
+    # ------------------------------------------------------
+    # Compute obj2
+
+    rhs_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+    op_.apply_kernel(u=source_[num_source_, :, :], output=rhs_)
+
+    lhs_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+    op_.apply_kernel(u=wavefield_[num_source_, :, :] * psi_, output=lhs_, adj=False, add=False)
+    lhs_ = wavefield_ - (k_ ** 2) * lhs_
+
+    obj2_[num_k_, num_source_] = np.linalg.norm(lhs_ - rhs_) ** 2.0
+
+    # ------------------------------------------------------
+    # Release shared memory
+    sm_green_func_.close()
+    sm_obj2_.close()
+    sm_source_.close()
+    sm_wavefield_.close()
+    sm_model_pert_.close()
 
 
 class ScatteringIntegralGeneralVzInversion2d:
@@ -714,7 +797,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
     def set_zero_initial_pert_wavefields(self):
         """
-        Sets zero initial perturbation
+        Sets zero initial perturbation and wavefields
         :return:
         """
 
@@ -736,6 +819,9 @@ class ScatteringIntegralGeneralVzInversion2d:
             )
             path = self.__wavefield_filename(iter_count=-1, num_k=k)
             np.savez_compressed(path, wavefield)
+
+        # Compute objective functions
+        self.__compute_obj1(iter_count=-1)
 
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
@@ -954,11 +1040,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=-1)
 
         # Otherwise self._state >= 7
-        last_iter_num_valid = self._last_iter_num - 1
-        if self._last_iter_step == 1:
-            last_iter_num_valid += 1
-
-        TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=last_iter_num_valid)
+        TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
         TypeChecker.check_int_bounds(x=num_k, lb=0, ub=self._num_k_values - 1)
 
         if iter_count == -1:
@@ -967,12 +1049,238 @@ class ScatteringIntegralGeneralVzInversion2d:
             return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/wavefield_" + str(num_k) + ".npz")
 
     def lambda_arr_filename(self, iter_count):
-        # TODO
-        pass
+        """
+        :param iter_count: int
+            Iteration number
+
+        :return: str
+            Lambda array filename for iteration
+        """
+        if self._state < 7:
+            print(
+                "\nOperation not allowed. Need self._state >= 7, but obtained self._state = ", self._state
+            )
+            return None
+
+        TypeChecker.check_int_bounds(x=iter_count, lb=0, ub=self._last_iter_num)
+        return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/lambda_arr.npz")
 
     def mu_arr_filename(self, iter_count):
-        # TODO
-        pass
+        """
+        :param iter_count: int
+            Iteration number
+
+        :return: str
+            Mu array filename for iteration
+        """
+        if self._state < 7:
+            print(
+                "\nOperation not allowed. Need self._state >= 7, but obtained self._state = ", self._state
+            )
+            return None
+
+        TypeChecker.check_int_bounds(x=iter_count, lb=0, ub=self._last_iter_num)
+        return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/mu_arr.npz")
+
+    def obj1_filename(self, iter_count):
+        """
+        :param iter_count: int
+            Iteration number
+
+        :return: str
+            Obj1 array filename for iteration
+        """
+        if self._state < 6:
+            print(
+                "\nOperation not allowed. Need self._state >= 6, but obtained self._state = ", self._state
+            )
+            return None
+
+        if self._state == 6:
+            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=-1)
+
+        # Otherwise self._state >= 7
+        TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
+        if iter_count == -1:
+            return os.path.join(self._basedir, "iterations/initial_obj1_arr.npz")
+        else:
+            return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj1_arr.npz")
+
+    def obj2_filename(self, iter_count, iter_step):
+        """
+        :param iter_count: int
+            Iteration number
+        :param iter_step: int
+            Iteration step
+
+        :return: str
+            Obj1 array filename for iteration
+        """
+        if self._state < 6:
+            print(
+                "\nOperation not allowed. Need self._state >= 6, but obtained self._state = ", self._state
+            )
+            return None
+
+        if self._state == 6:
+            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=-1)
+            return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+
+        # Otherwise self._state >= 7
+        TypeChecker.check_int_bounds(x=iter_step, lb=0, ub=1)
+        if iter_step == 0:
+            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
+
+            if iter_count == -1:
+                return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+            else:
+                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step0_arr.npz")
+        else:
+            last_iter_num_valid = self._last_iter_num - 1
+            if self._last_iter_step == 1:
+                last_iter_num_valid += 1
+            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=last_iter_num_valid)
+
+            if iter_count == -1:
+                return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+            else:
+                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step1_arr.npz")
+
+    def __compute_obj1(self, iter_count):
+
+        print("\n\n---------------------------------------------")
+        print("Computing data residual...\n")
+
+        obj1 = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float64)
+        true_data = np.zeros(shape=(self._num_sources, self._nz, self._n), dtype=self._precision)
+        iter_data = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision)
+
+        rec_locs = np.asarray(self._rec_locs, dtype=int)
+
+        for k in numba.prange(self._num_k_values):
+
+            true_data *= 0
+            iter_data *= 0
+
+            # Load true data file
+            with np.load(self.__true_data_filename(num_k=k)) as f:
+                true_data += f["arr_0"]
+
+            # Load iteration data file
+            with np.load(self.__wavefield_filename(iter_count=iter_count, num_k=k)) as f:
+                iter_data += f["arr_0"]
+
+            for num_src in range(self._num_sources):
+
+                true_data_src = true_data[num_src, :, :]
+                iter_data_src = iter_data[num_src, :, :]
+
+                true_data_rcv = true_data_src[rec_locs[:, 0], rec_locs[:, 1]]
+                iter_data_rcv = iter_data_src[rec_locs[:, 0], rec_locs[:, 1]]
+
+                obj1[k, num_src] = np.linalg.norm(true_data_rcv - iter_data_rcv) ** 2.0
+
+        # Write computed data to disk
+        np.savez_compressed(self.__obj1_filename(iter_count=iter_count), obj1)
+
+    def __compute_obj2(self, iter_count, iter_step, num_procs):
+
+        num_bytes_obj2_arr = self._num_k_values * self._num_sources * 8
+
+        # Create and load Green's function into shared memory
+        with SharedMemoryManager() as smm:
+
+            # Create shared memory for obj2
+            sm = smm.SharedMemory(size=num_bytes_obj2_arr)
+            obj2 = ndarray(shape=(self._num_k_values, self._num_sources), dtype=np.float64, buffer=sm.buf)
+            obj2 *= 0
+
+            # Create shared memory for Green's function
+            sm1 = smm.SharedMemory(size=self.__num_bytes_greens_func())
+            green_func = ndarray(shape=(self._nz, self._nz, 2 * self._n - 1), dtype=self._precision, buffer=sm1.buf)
+
+            # Create shared memory for source
+            sm2 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            source = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm2.buf)
+
+            # Create shared memory for wavefield
+            sm3 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            wavefield = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm3.buf)
+
+            # Create shared memory for perturbation and load it
+            sm4 = smm.SharedMemory(size=self.__num_bytes_model_pert())
+            pert = ndarray(shape=(self._nz, self._n), dtype=self._precision_real, buffer=sm4.buf)
+            pert *= 0
+
+            if iter_count == -1:
+                model_pert_filename = self.__model_pert_filename(iter_count=iter_count)
+            else:
+                if iter_step == 1:
+                    model_pert_filename = self.__model_pert_filename(iter_count=iter_count)
+                else:
+                    model_pert_filename = self.__model_pert_filename(iter_count=iter_count-1)
+
+            with np.load(model_pert_filename) as f:
+                pert += f["arr_0"]
+
+            # Loop over k values
+            for k in range(self._num_k_values):
+
+                print("\n\n---------------------------------------------")
+                print("---------------------------------------------")
+                print("Starting k number ", k)
+
+                # Load Green's func into shared memory
+                green_func *= 0
+                green_func_filename = self.__greens_func_filename(num_k=k)
+                with np.load(green_func_filename) as f:
+                    green_func += f["arr_0"]
+
+                # Load source into shared memory
+                source *= 0
+                source_filename = self.__source_filename(num_k=k)
+                with np.load(source_filename) as f:
+                    source += f["arr_0"]
+
+                # Load wavefield into shared memory
+                wavefield *= 0
+                wavefield_filename = self.__wavefield_filename(num_k=k, iter_count=iter_count)
+                with np.load(wavefield_filename) as f:
+                    wavefield += f["arr_0"]
+
+                param_tuple_list = [
+                    (
+                        self._n,
+                        self._nz,
+                        self._a,
+                        self._b,
+                        self._k_values[k],
+                        self._vz,
+                        self._m,
+                        self._sigma_greens_func,
+                        self._precision,
+                        self._precision_real,
+                        self.greens_func_filedir(num_k=k),
+                        self._num_k_values,
+                        self._num_sources,
+                        sm.name,
+                        sm1.name,
+                        sm2.name,
+                        sm3.name,
+                        sm4.name,
+                        i
+                    ) for i in range(self._num_sources)
+                ]
+
+                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                    max_ = len(param_tuple_list)
+
+                    with tqdm(total=max_) as pbar:
+                        for _ in pool.imap_unordered(compute_obj2, param_tuple_list):
+                            pbar.update()
+
+            # Write computed data to disk
+            np.savez_compressed(self.__obj2_filename(iter_count=iter_count, iter_step=iter_step), obj2)
 
     def __get_next_iter_num(self):
         """
@@ -1027,6 +1335,29 @@ class ScatteringIntegralGeneralVzInversion2d:
     def __mu_arr_filename(self, iter_count):
         return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/mu_arr.npz")
 
+    def __obj1_filename(self, iter_count):
+        if iter_count == -1:
+            return os.path.join(self._basedir, "iterations/initial_obj1_arr.npz")
+        else:
+            return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj1_arr.npz")
+
+    def __obj2_filename(self, iter_count, iter_step):
+
+        if self._state == 6:
+            return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+
+        # Otherwise self._state >= 7
+        if iter_step == 0:
+            if iter_count == -1:
+                return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+            else:
+                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step0_arr.npz")
+        else:
+            if iter_count == -1:
+                return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+            else:
+                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step1_arr.npz")
+
     def __num_bytes_greens_func(self):
 
         # Calculate num bytes for Green's function
@@ -1046,6 +1377,17 @@ class ScatteringIntegralGeneralVzInversion2d:
             num_bytes *= 8
         if self._precision == np.complex128:
             num_bytes *= 16
+
+        return num_bytes
+
+    def __num_bytes_model_pert(self):
+
+        # Calculate num bytes for model perturbation
+        num_bytes = self._nz * self._n
+        if self._precision_real == np.float32:
+            num_bytes *= 4
+        if self._precision_real == np.float64:
+            num_bytes *= 8
 
         return num_bytes
 
