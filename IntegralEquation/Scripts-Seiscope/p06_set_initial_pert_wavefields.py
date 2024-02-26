@@ -10,7 +10,7 @@ if __name__ == "__main__":
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
-        restart_code=None
+        restart_code=5
     )
 
     print("\n\n---------------------------------------------")
@@ -18,4 +18,4 @@ if __name__ == "__main__":
     print("Set zero initial perturbation and wavefields...")
     print("\n")
 
-    obj.set_zero_initial_pert_wavefields()
+    obj.set_zero_initial_pert_wavefields(num_procs=obj.num_sources)
