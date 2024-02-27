@@ -16,19 +16,28 @@ if __name__ == "__main__":
     print("Num k values = ", obj.num_k_values, ", Num sources = ", obj.num_sources)
 
     # Check arguments
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         raise ValueError("Program missing command line arguments.")
 
     num_k_val = int(sys.argv[1])
     num_source = int(sys.argv[2])
     num_iter = int(sys.argv[3])
+    aspect = float(sys.argv[4])
 
     data = obj.get_inverted_wavefield(iter_count=num_iter, num_k=num_k_val, num_source=num_source)
+    data_true = obj.get_true_wavefield(num_k=num_k_val, num_source=num_source)
+    scale = np.max(np.abs(data_true))
 
     xmax = 1.0
     zmax = (obj.b - obj.a)
     extent = [0, xmax, zmax, 0]
-    plt.imshow(np.real(data), cmap="Greys", extent=extent, aspect=10)
+
+    plt.imshow(np.real(data_true), cmap="Greys", extent=extent, aspect=aspect, vmin=-scale, vmax=scale)
+    plt.xlabel(r'$x_1$ [km]')
+    plt.ylabel(r'$z$ [km]')
+    plt.show()
+
+    plt.imshow(np.real(data), cmap="Greys", extent=extent, aspect=aspect, vmin=-scale, vmax=scale)
     plt.xlabel(r'$x_1$ [km]')
     plt.ylabel(r'$z$ [km]')
     plt.show()
