@@ -1049,8 +1049,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 shape=(self._num_k_values, self._num_sources),
                 dtypes=(np.float32,),
                 nan_inf=True,
-                lb=0.0,
-                ub=1.0
+                lb=0.0
             )
         else:
             lambda_arr = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float32) + 1.0
@@ -1061,8 +1060,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 shape=(self._num_k_values, self._num_sources),
                 dtypes=(np.float32,),
                 nan_inf=True,
-                lb=0.0,
-                ub=1.0
+                lb=0.0
             )
         else:
             mu_arr = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float32) + 1.0
