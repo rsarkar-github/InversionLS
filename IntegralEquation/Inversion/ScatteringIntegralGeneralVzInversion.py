@@ -400,7 +400,7 @@ def update_wavefield(params):
             maxiter=max_iter_
         )[:5]
 
-        wavefield_[num_source_, :, :] += np.reshape(sol_, newshape=(nz_, n_))
+        wavefield_[num_source_, :, :] += np.reshape(rhs_scale_ * sol_, newshape=(nz_, n_))
         end_t_ = time.time()
         print(
             "Shot num = ", num_source_,
