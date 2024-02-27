@@ -23,7 +23,7 @@ if __name__ == "__main__":
     plt.colorbar()
     plt.show()
 
-    obj1_fname = inv_obj.obj1_filename(iter_count=0)
+    obj1_fname = inv_obj.obj1_filename(iter_count=-1)
     with np.load(obj1_fname) as f:
         obj1 = f["arr_0"]
 

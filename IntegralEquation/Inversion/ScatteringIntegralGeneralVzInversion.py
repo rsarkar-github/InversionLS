@@ -1047,7 +1047,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             TypeChecker.check_ndarray(
                 x=lambda_arr,
                 shape=(self._num_k_values, self._num_sources),
-                dtypes=np.float32,
+                dtypes=(np.float32,),
                 nan_inf=True,
                 lb=0.0,
                 ub=1.0
@@ -1059,7 +1059,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             TypeChecker.check_ndarray(
                 x=mu_arr,
                 shape=(self._num_k_values, self._num_sources),
-                dtypes=np.float32,
+                dtypes=(np.float32,),
                 nan_inf=True,
                 lb=0.0,
                 ub=1.0
@@ -1410,12 +1410,11 @@ class ScatteringIntegralGeneralVzInversion2d:
         if self._state == 6:
             TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=-1)
 
-        # Otherwise self._state >= 7
-        last_iter_num_valid = self._last_iter_num - 1
-        if self._last_iter_step == 1:
-            last_iter_num_valid += 1
-
-        TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=last_iter_num_valid)
+        if self._state > 6:
+            last_iter_num_valid = self._last_iter_num - 1
+            if self._last_iter_step == 1:
+                last_iter_num_valid += 1
+            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=last_iter_num_valid)
 
         if iter_count == -1:
             return os.path.join(self._basedir, "iterations/initial_model_pert.npz")
@@ -1441,8 +1440,9 @@ class ScatteringIntegralGeneralVzInversion2d:
         if self._state == 6:
             TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=-1)
 
-        # Otherwise self._state >= 7
-        TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
+        if self._state > 6:
+            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
+
         TypeChecker.check_int_bounds(x=num_k, lb=0, ub=self._num_k_values - 1)
 
         if iter_count == -1:
@@ -1500,13 +1500,14 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         if self._state == 6:
             TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=-1)
-
-        # Otherwise self._state >= 7
-        TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
-        if iter_count == -1:
             return os.path.join(self._basedir, "iterations/initial_obj1_arr.npz")
-        else:
-            return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj1_arr.npz")
+
+        if self._state > 6:
+            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
+            if iter_count == -1:
+                return os.path.join(self._basedir, "iterations/initial_obj1_arr.npz")
+            else:
+                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj1_arr.npz")
 
     def obj2_filename(self, iter_count, iter_step):
         """
@@ -1524,29 +1525,32 @@ class ScatteringIntegralGeneralVzInversion2d:
             )
             return None
 
+        TypeChecker.check_int_bounds(x=iter_step, lb=0, ub=1)
+
         if self._state == 6:
             TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=-1)
             return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
 
-        # Otherwise self._state >= 7
-        TypeChecker.check_int_bounds(x=iter_step, lb=0, ub=1)
-        if iter_step == 0:
-            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
+        if self._state > 6:
 
-            if iter_count == -1:
-                return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
-            else:
-                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step0_arr.npz")
-        else:
-            last_iter_num_valid = self._last_iter_num - 1
-            if self._last_iter_step == 1:
-                last_iter_num_valid += 1
-            TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=last_iter_num_valid)
+            if iter_step == 0:
+                TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=self._last_iter_num)
 
-            if iter_count == -1:
-                return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+                if iter_count == -1:
+                    return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+                else:
+                    return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step0_arr.npz")
+
             else:
-                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step1_arr.npz")
+                last_iter_num_valid = self._last_iter_num - 1
+                if self._last_iter_step == 1:
+                    last_iter_num_valid += 1
+                TypeChecker.check_int_bounds(x=iter_count, lb=-1, ub=last_iter_num_valid)
+
+                if iter_count == -1:
+                    return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
+                else:
+                    return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step1_arr.npz")
 
     def __compute_obj1(self, iter_count):
 
@@ -1749,19 +1753,12 @@ class ScatteringIntegralGeneralVzInversion2d:
 
     def __obj2_filename(self, iter_count, iter_step):
 
-        if self._state == 6:
+        if iter_count == -1:
             return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
-
-        # Otherwise self._state >= 7
-        if iter_step == 0:
-            if iter_count == -1:
-                return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
-            else:
-                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step0_arr.npz")
         else:
-            if iter_count == -1:
-                return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
-            else:
+            if iter_step == 0:
+                return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step0_arr.npz")
+            if iter_step == 1:
                 return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step1_arr.npz")
 
     def __num_bytes_greens_func(self):

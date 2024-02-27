@@ -18,10 +18,23 @@ if __name__ == "__main__":
     print("Perform update...")
     print("\n")
 
+    obj1_fname = obj.obj1_filename(iter_count=-1)
+    with np.load(obj1_fname) as f:
+        obj1 = f["arr_0"]
+
+    obj2_fname = obj.obj2_filename(iter_count=-1, iter_step=0)
+    with np.load(obj2_fname) as f:
+        obj2 = f["arr_0"]
+
+    print("obj1 = ", np.sum(obj1), ", obj2 = ", np.sum(obj2))
+
+    lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
+    mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
+
     obj.perform_inversion_update_wavefield(
         iter_count=0,
-        lambda_arr=None,
-        mu_arr=None,
+        lambda_arr=lambda_arr,
+        mu_arr=mu_arr,
         max_iter=10,
         solver="lsmr",
         atol=1e-5,
