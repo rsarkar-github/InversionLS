@@ -1242,8 +1242,25 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def get_inverted_wavefield(self):
-        pass
+    def get_inverted_wavefield(self, iter_count, num_k, num_source):
+        """
+        Get inverted data. Follows 0 based indexing.
+
+        :param num_k: int
+            k value number
+        :param num_source: int
+            Source number
+
+        :return: np.ndarray of shape (self._nz, self._n)
+            True data for iteration number iter_num, k value num_k, and source number num_source.
+        """
+        wavefield_filename = self.wavefield_filename(iter_count=iter_count, num_k=num_k)
+        TypeChecker.check_int_bounds(x=num_source, lb=0, ub=self._num_sources)
+
+        with np.load(wavefield_filename) as f:
+            wavefield = f["arr_0"][num_source, :, :]
+
+        return wavefield
 
     def print_params(self):
 

@@ -23,7 +23,7 @@ if __name__ == "__main__":
     num_source = int(sys.argv[2])
     num_iter = int(sys.argv[3])
 
-    data = obj.get_true_wavefield(num_k=num_k_val, num_source=num_source)
+    data = obj.get_inverted_wavefield(iter_count=num_iter, num_k=num_k_val, num_source=num_source)
 
     xmax = 1.0
     zmax = (obj.b - obj.a)
