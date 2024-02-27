@@ -262,6 +262,186 @@ def compute_obj2(params):
     sm_model_pert_.close()
 
 
+def update_wavefield(params):
+
+    # ------------------------------------------------------
+    # Read all parameters
+
+    n_ = int(params[0])
+    nz_ = int(params[1])
+    a_ = float(params[2])
+    b_ = float(params[3])
+    k_ = float(params[4])
+    vz_ = params[5]
+    m_ = int(params[6])
+    sigma_ = float(params[7])
+    precision_ = params[8]
+    precision_real_ = params[9]
+    green_func_dir_ = str(params[10])
+    num_sources_ = int(params[11])
+    rec_locs_ = params[12]
+    num_source_ = int(params[13])
+    lambda_ = float(params[14])
+    mu_ = float(params[15])
+    sm_green_func_name_ = str(params[16])
+    sm_source_name_ = str(params[17])
+    sm_wavefield_name_ = str(params[18])
+    sm_true_data_name_ = str(params[19])
+    sm_model_pert_name_ = str(params[20])
+    max_iter_ = int(params[21])
+    solver_ = str(params[22])
+    atol_ = float(params[23])
+    btol_ = float(params[24])
+
+    # ------------------------------------------------------
+    # Create Lippmann-Schwinger operator
+    # Attach to shared memory for Green's function
+
+    op_ = TruncatedKernelGeneralVz2d(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1,
+        no_mpi=True, verbose=False, light_mode=True
+    )
+
+    op_.set_parameters(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1, green_func_set=False,
+        no_mpi=True, verbose=False
+    )
+
+    sm_green_func_ = SharedMemory(sm_green_func_name_)
+    green_func_ = ndarray(shape=(nz_, nz_, 2 * n_ - 1), dtype=precision_, buffer=sm_green_func_.buf)
+    op_.greens_func = green_func_
+
+    # ------------------------------------------------------
+    # Attach to shared memory for source, wavefield, true data, model_pert
+
+    sm_source_ = SharedMemory(sm_source_name_)
+    source_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_source_.buf)
+
+    sm_wavefield_ = SharedMemory(sm_wavefield_name_)
+    wavefield_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_wavefield_.buf)
+
+    sm_true_data_ = SharedMemory(sm_true_data_name_)
+    true_data_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_true_data_.buf)
+
+    sm_model_pert_ = SharedMemory(sm_model_pert_name_)
+    psi_ = ndarray(shape=(nz_, n_), dtype=precision_real_, buffer=sm_model_pert_.buf)
+
+    # ------------------------------------------------------
+    # Define linear operator objects
+    # Compute rhs (scale to norm 1)
+
+    num_recs_ = rec_locs_.shape[0]
+    def func_matvec(v):
+
+        v = np.reshape(v, newshape=(nz_, n_))
+        u = v * 0
+        op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
+        u = lambda_ * np.reshape(v - (k_ ** 2) * u, newshape=(nz_ * n_,))
+        u1 = mu_ * np.reshape(v[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
+
+        out = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
+        out[0:nz_ * n_] = u
+        out[nz_ * n_:] = u1
+
+        return out
+
+    def func_matvec_adj(v):
+
+        v1 = np.reshape(v[0:nz_ * n_], newshape=(nz_, n_))
+        u = v1 * 0
+        op_.apply_kernel(u=v1, output=u, adj=True, add=False)
+        u = lambda_ * np.reshape(v1 - (k_ ** 2) * u * psi_, newshape=(nz_ * n_,))
+
+        v1 *= 0
+        v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_ * n_:]
+        v1 = np.reshape(v1, newshape=(nz_ * n_,))
+
+        return u + v1
+
+    linop_lse = LinearOperator(
+        shape=(nz_ * n_ + num_recs_, nz_ * n_),
+        matvec=func_matvec,
+        rmatvec=func_matvec_adj,
+        dtype=precision_
+    )
+
+    temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+    op_.apply_kernel(u=source_[num_source_, :, :], output=temp_)
+    temp_ = lambda_ * np.reshape(temp_, newshape=(nz_ * n_,))
+
+    temp1_ = true_data_[num_source_, :, :]
+    temp1_ = np.reshape(mu_ * temp1_[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
+
+    rhs_ = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
+    rhs_[0:nz_ * n_] = temp_
+    rhs_[nz_ * n_:] = temp1_
+    rhs_ -= func_matvec(
+        v=np.reshape(wavefield_[num_source_, :, :], newshape=(nz_ * n_, 1))
+    )
+    rhs_scale_ = np.linalg.norm(rhs_)
+    rhs_ = rhs_ / rhs_scale_
+
+    del temp_
+    del temp1_
+
+    # ------------------------------------------------------
+    # Solve for solution
+
+    if solver_ == "lsmr":
+        start_t_ = time.time()
+        sol_, istop_, itn_, normr_, normar_ = lsmr(
+            linop_lse,
+            rhs_,
+            atol=atol_,
+            btol=btol_,
+            show=False,
+            maxiter=max_iter_
+        )[:5]
+
+        wavefield_[num_source_, :, :] += np.reshape(sol_, newshape=(nz_, n_))
+        end_t_ = time.time()
+        print(
+            "Shot num = ", num_source_,
+            ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
+            ", istop = ", istop_,
+            ", itn = ", itn_,
+            ", normr_ = ", normr_,
+            ", normar_ = ", normar_
+        )
+
+    if solver_ == "lsqr":
+        start_t_ = time.time()
+        sol_, istop_, itn_, normr_, _, _, _, normar_ = lsqr(
+            linop_lse,
+            rhs_,
+            atol=atol_,
+            btol=btol_,
+            show=False,
+            iter_lim=max_iter_
+        )[:8]
+
+        wavefield_[num_source_, :, :] += np.reshape(rhs_scale_ * sol_, newshape=(nz_, n_))
+        end_t_ = time.time()
+        print(
+            "Shot num = ", num_source_,
+            ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
+            ", istop = ", istop_,
+            ", itn = ", itn_,
+            ", normr_ = ", normr_,
+            ", normar_ = ", normar_
+        )
+
+    # ------------------------------------------------------
+    # Release shared memory
+    sm_green_func_.close()
+    sm_source_.close()
+    sm_wavefield_.close()
+    sm_true_data_.close()
+    sm_model_pert_.close()
+
+
 class ScatteringIntegralGeneralVzInversion2d:
 
     def __init__(self, basedir, restart=False, restart_code=None):
@@ -763,7 +943,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def get_true_data(self, num_k, num_source):
+    def get_true_wavefield(self, num_k, num_source):
         """
         Get true data. Follows 0 based indexing.
 
@@ -833,10 +1013,14 @@ class ScatteringIntegralGeneralVzInversion2d:
         self.__print_reset_state_msg()
 
     def perform_inversion_update_wavefield(
-            self, iter_num=None,
+            self, iter_count=None,
             lambda_arr=None, mu_arr=None,
-            max_iter=100, solver="lsmr", tol=1e-5
+            max_iter=100, solver="lsmr", atol=1e-5, btol=1e-5,
+            num_procs=1, clean=False
     ):
+
+        # ------------------------------------------------------
+        # Check inputs
 
         if self._state < 6:
             print(
@@ -844,26 +1028,222 @@ class ScatteringIntegralGeneralVzInversion2d:
             )
             return
 
+        if iter_count is not None:
+            TypeChecker.check_int_bounds(x=iter_count, lb=0, ub=self.__get_next_iter_num()[0])
+        else:
+            iter_count = self.__get_next_iter_num()[0]
+
         TypeChecker.check_int_positive(x=max_iter)
         TypeChecker.check(x=solver, expected_type=(str,))
         if solver not in ["lsqr", "lsmr"]:
             print("solver type not supported. Only solvers available are lsqr and lsmr.")
             return
+        TypeChecker.check_float_bounds(x=atol, lb=1e-5, ub=1.0)
+        TypeChecker.check_float_bounds(x=btol, lb=1e-5, ub=1.0)
+        TypeChecker.check_int_positive(x=num_procs)
+        TypeChecker.check(x=clean, expected_type=(bool,))
 
-        if iter_num is None:
-
-            next_iter_num, next_iter_step = self.get_next_iter_num()
-            if next_iter_step == 1:
-                print("Iteration already performed.")
-                return
-
-            # for k in range(self._num_k_values):
-
-
-
-        # TODO
+        if lambda_arr is not None:
+            TypeChecker.check_ndarray(
+                x=lambda_arr,
+                shape=(self._num_k_values, self._num_sources),
+                dtypes=np.float32,
+                nan_inf=True,
+                lb=0.0,
+                ub=1.0
+            )
         else:
-            pass
+            lambda_arr = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float32) + 1.0
+
+        if mu_arr is not None:
+            TypeChecker.check_ndarray(
+                x=mu_arr,
+                shape=(self._num_k_values, self._num_sources),
+                dtypes=np.float32,
+                nan_inf=True,
+                lb=0.0,
+                ub=1.0
+            )
+        else:
+            mu_arr = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float32) + 1.0
+
+        # ------------------------------------------------------
+        # Clean directories if clean is True
+        # Create directories if missing
+
+        if clean:
+
+            # Remove all future iteration directories including iter_count directory
+            list_not_remove = ["iter" + str(i) for i in range(iter_count)]
+            for item in os.listdir(os.path.join(self._basedir, "iterations/")):
+                path = os.path.join(self._basedir, "iterations/", item)
+                if os.path.isdir(path):
+                    if item not in list_not_remove:
+                        try:
+                            shutil.rmtree(path)
+                        except OSError as e:
+                            print("Error: %s - %s." % (e.filename, e.strerror))
+
+        path = os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/")
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        # ------------------------------------------------------
+        # Perform update
+
+        rec_locs = np.asarray(self._rec_locs, dtype=int)
+
+        print("\n\n---------------------------------------------")
+        print("Updating wave field, Iteration " + str(iter_count) + "...\n")
+
+        # Create and load Green's function into shared memory
+        with SharedMemoryManager() as smm:
+
+            # Create shared memory for Green's function
+            sm_greens_func = smm.SharedMemory(size=self.__num_bytes_greens_func())
+            green_func = ndarray(
+                shape=(self._nz, self._nz, 2 * self._n - 1),
+                dtype=self._precision,
+                buffer=sm_greens_func.buf
+            )
+
+            # Create shared memory for source
+            sm_source = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            source = ndarray(
+                shape=(self._num_sources, self._nz, self._n),
+                dtype=self._precision,
+                buffer=sm_source.buf
+            )
+
+            # Create shared memory for wavefield
+            sm_wavefield = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            wavefield = ndarray(
+                shape=(self._num_sources, self._nz, self._n),
+                dtype=self._precision,
+                buffer=sm_wavefield.buf
+            )
+
+            # Create shared memory for true data
+            sm_true_data = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            true_data = ndarray(
+                shape=(self._num_sources, self._nz, self._n),
+                dtype=self._precision,
+                buffer=sm_true_data.buf
+            )
+
+            # Create shared memory for initial perturbation and load it
+            sm_pert = smm.SharedMemory(size=self.__num_bytes_model_pert())
+            pert = ndarray(shape=(self._nz, self._n), dtype=self._precision_real, buffer=sm_pert.buf)
+            pert *= 0
+            model_pert_filename = self.__model_pert_filename(iter_count=iter_count - 1)
+            with np.load(model_pert_filename) as f:
+                pert += f["arr_0"]
+
+            # Loop over k values
+            for k in range(self._num_k_values):
+
+                print("\n\n---------------------------------------------")
+                print("---------------------------------------------")
+                print("Starting k number ", k)
+
+                # Load Green's func into shared memory
+                green_func *= 0
+                green_func_filename = self.__greens_func_filename(num_k=k)
+                with np.load(green_func_filename) as f:
+                    green_func += f["arr_0"]
+
+                # Load source into shared memory
+                source *= 0
+                source_filename = self.__source_filename(num_k=k)
+                with np.load(source_filename) as f:
+                    source += f["arr_0"]
+
+                # Load initial wavefield into shared memory
+                wavefield *= 0
+                wavefield_filename = self.__wavefield_filename(num_k=k, iter_count=iter_count - 1)
+                with np.load(wavefield_filename) as f:
+                    wavefield += f["arr_0"]
+
+                # Load true data into shared memory
+                true_data *= 0
+                true_data_filename = self.__true_data_filename(num_k=k)
+                with np.load(true_data_filename) as f:
+                    true_data += f["arr_0"]
+
+                param_tuple_list = [
+                    (
+                        self._n,
+                        self._nz,
+                        self._a,
+                        self._b,
+                        self._k_values[k],
+                        self._vz,
+                        self._m,
+                        self._sigma_greens_func,
+                        self._precision,
+                        self._precision_real,
+                        self.greens_func_filedir(num_k=k),
+                        self._num_sources,
+                        rec_locs,
+                        i,
+                        np.sqrt(lambda_arr[k, i]),
+                        np.sqrt(mu_arr[k, i]),
+                        sm_greens_func.name,
+                        sm_source.name,
+                        sm_wavefield.name,
+                        sm_true_data.name,
+                        sm_pert.name,
+                        max_iter,
+                        solver,
+                        atol,
+                        btol
+                    ) for i in range(self._num_sources)
+                ]
+
+                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                    max_ = len(param_tuple_list)
+
+                    with tqdm(total=max_) as pbar:
+                        for _ in pool.imap_unordered(update_wavefield, param_tuple_list):
+                            pbar.update()
+
+                # Write computed wavefield to disk
+                np.savez_compressed(self.__wavefield_filename(iter_count=iter_count, num_k=k), wavefield)
+
+        # ------------------------------------------------------
+        # Write lambda_arr and mu_arr to disk
+
+        np.savez_compressed(self.__lambda_arr_filename(iter_count=iter_count), lambda_arr)
+        np.savez_compressed(self.__mu_arr_filename(iter_count=iter_count), mu_arr)
+
+        # ------------------------------------------------------
+        # Compute objective functions
+
+        self.__compute_obj1(iter_count=iter_count)
+        self.__compute_obj2(iter_count=iter_count, iter_step=0, num_procs=num_procs)
+
+        # ------------------------------------------------------
+        # Update parameter file
+
+        if clean or self._state == 6:
+            self._last_iter_num = iter_count
+            self._last_iter_step = 0
+            update_json(filename=self._param_file, key="last iter num", val=self._last_iter_num)
+            update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
+
+        else:
+            if iter_count > self._last_iter_num:
+                self._last_iter_num = iter_count
+                self._last_iter_step = 0
+                update_json(filename=self._param_file, key="last iter num", val=self._last_iter_num)
+                update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
+
+        self._state = 7
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
+
+    def get_inverted_wavefield(self):
+        pass
 
     def print_params(self):
 
@@ -1627,7 +2007,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                                 nan_inf=True
                             )
 
-                        print("Checking Iter" + str(iter_num) + " model pert and wavefields: OK")
+                        print("Checking Iteration " + str(iter_num) + " model pert and wavefields: OK")
 
                     # Check wavefields
                     for i in range(self._num_k_values):
@@ -1642,7 +2022,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                             nan_inf=True
                         )
 
-                    print("Checking Iter" + str(self._last_iter_num) + " wavefields: OK")
+                    print("Checking Iteration " + str(self._last_iter_num) + " wavefields: OK")
 
     def __clean(self, state):
 
@@ -1708,4 +2088,4 @@ class ScatteringIntegralGeneralVzInversion2d:
         elif state == 6:
             return "Initial perturbation and wave fields set."
         elif state == 7:
-            return "Inversion started."
+            return "Inversion performed."

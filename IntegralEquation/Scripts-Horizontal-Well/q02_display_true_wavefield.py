@@ -22,7 +22,7 @@ if __name__ == "__main__":
     num_k_val = int(sys.argv[1])
     num_source = int(sys.argv[2])
 
-    data = obj.get_true_data(num_k=num_k_val, num_source=num_source)
+    data = obj.get_true_wavefield(num_k=num_k_val, num_source=num_source)
 
     xmax = 1.0
     zmax = (obj.b - obj.a)

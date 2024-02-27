@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
@@ -5,7 +6,7 @@ from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralG
 
 if __name__ == "__main__":
 
-    basedir = "InversionLS/Expt/marmousi/"
+    basedir = "InversionLS/Expt/horizontal-well/"
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
@@ -14,13 +15,20 @@ if __name__ == "__main__":
 
     print("Num k values = ", obj.num_k_values, ", Num sources = ", obj.num_sources)
 
-    num_k_val = 30
-    num_source = 10
+    # Check arguments
+    if len(sys.argv) < 4:
+        raise ValueError("Program missing command line arguments.")
 
-    data = obj.get_true_data(num_k=num_k_val, num_source=num_source)
+    num_k_val = int(sys.argv[1])
+    num_source = int(sys.argv[2])
+    num_iter = int(sys.argv[3])
+
+    data = obj.get_true_wavefield(num_k=num_k_val, num_source=num_source)
 
     xmax = 1.0
     zmax = (obj.b - obj.a)
     extent = [0, xmax, zmax, 0]
-    plt.imshow(np.real(data), cmap="Greys", extent=extent)
+    plt.imshow(np.real(data), cmap="Greys", extent=extent, aspect=10)
+    plt.xlabel(r'$x_1$ [km]')
+    plt.ylabel(r'$z$ [km]')
     plt.show()
