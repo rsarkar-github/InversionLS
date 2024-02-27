@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     print("obj1 = ", obj1_sum, ", obj2 = ", obj2_sum)
 
-    lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0 / fac
+    lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + fac
     mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
 
     obj.perform_inversion_update_wavefield(
