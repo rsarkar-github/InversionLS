@@ -249,7 +249,7 @@ def compute_obj2(params):
 
     lhs_ = np.zeros(shape=(nz_, n_), dtype=precision_)
     op_.apply_kernel(u=wavefield_[num_source_, :, :] * psi_, output=lhs_, adj=False, add=False)
-    lhs_ = wavefield_ - (k_ ** 2) * lhs_
+    lhs_ = wavefield_[num_source_, :, :] - (k_ ** 2) * lhs_
 
     obj2_[num_k_, num_source_] = np.linalg.norm(lhs_ - rhs_) ** 2.0
 
@@ -443,7 +443,68 @@ def update_wavefield(params):
 
 
 def compute_initial_wavefields(params):
-    pass
+
+    # ------------------------------------------------------
+    # Read all parameters
+
+    n_ = int(params[0])
+    nz_ = int(params[1])
+    a_ = float(params[2])
+    b_ = float(params[3])
+    k_ = float(params[4])
+    vz_ = params[5]
+    m_ = int(params[6])
+    sigma_ = float(params[7])
+    precision_ = params[8]
+    precision_real_ = params[9]
+    green_func_dir_ = str(params[10])
+    num_sources_ = int(params[11])
+    sm_green_func_name_ = str(params[12])
+    sm_source_name_ = str(params[13])
+    sm_wavefield_name_ = str(params[14])
+    num_source_ = int(params[15])
+
+    # ------------------------------------------------------
+    # Create Lippmann-Schwinger operator
+    # Attach to shared memory for Green's function
+
+    op_ = TruncatedKernelGeneralVz2d(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1,
+        no_mpi=True, verbose=False, light_mode=True
+    )
+
+    op_.set_parameters(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1, green_func_set=False,
+        no_mpi=True, verbose=False
+    )
+
+    sm_green_func_ = SharedMemory(sm_green_func_name_)
+    green_func_ = ndarray(shape=(nz_, nz_, 2 * n_ - 1), dtype=precision_, buffer=sm_green_func_.buf)
+    op_.greens_func = green_func_
+
+    # ------------------------------------------------------
+    # Attach to shared memory for source, wavefield
+
+    sm_source_ = SharedMemory(sm_source_name_)
+    source_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_source_.buf)
+
+    sm_wavefield_ = SharedMemory(sm_wavefield_name_)
+    wavefield_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_wavefield_.buf)
+
+    # ------------------------------------------------------
+    # Compute initial wavefiels
+
+    op_.apply_kernel(u=source_[num_source_, :, :], output=wavefield_[num_source_, :, :])
+
+    # ------------------------------------------------------
+    # Release shared memory
+
+    sm_green_func_.close()
+    sm_source_.close()
+    sm_wavefield_.close()
+
 
 class ScatteringIntegralGeneralVzInversion2d:
 
@@ -1104,22 +1165,6 @@ class ScatteringIntegralGeneralVzInversion2d:
                 # Write computed data to disk
                 np.savez_compressed(self.__wavefield_filename(iter_count=-1, num_k=k), wavefield)
 
-            # Compute objective functions
-            self.__compute_obj1(iter_count=-1)
-            self.__compute_obj2(iter_count=-1, iter_step=0, num_procs=num_procs)
-
-            self._state += 1
-            update_json(filename=self._param_file, key="state", val=self._state)
-            self.__print_reset_state_msg()
-
-        # Set zero initial wavefields
-        for k in range(self._num_k_values):
-            wavefield = np.zeros(
-                shape=(self._num_sources, self._nz, self._n), dtype=self._precision
-            )
-            path = self.__wavefield_filename(iter_count=-1, num_k=k)
-            np.savez_compressed(path, wavefield)
-
         # Compute objective functions
         self.__compute_obj1(iter_count=-1)
         self.__compute_obj2(iter_count=-1, iter_step=1, num_procs=num_procs)
@@ -1127,7 +1172,6 @@ class ScatteringIntegralGeneralVzInversion2d:
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
-
 
     def perform_inversion_update_wavefield(
             self, iter_count=None,

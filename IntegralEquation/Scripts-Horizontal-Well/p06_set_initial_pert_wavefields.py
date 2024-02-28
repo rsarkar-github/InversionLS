@@ -18,4 +18,5 @@ if __name__ == "__main__":
     print("Set zero initial perturbation and wavefields...")
     print("\n")
 
-    obj.set_zero_initial_pert_wavefields(num_procs=10)
+    # obj.set_zero_initial_pert_wavefields(num_procs=10)
+    obj.set_zero_initial_pert(num_procs=16)
