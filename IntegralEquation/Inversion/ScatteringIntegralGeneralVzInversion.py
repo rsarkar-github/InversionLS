@@ -1167,7 +1167,8 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         # Compute objective functions
         self.__compute_obj1(iter_count=-1)
-        self.__compute_obj2(iter_count=-1, iter_step=1, num_procs=num_procs)
+        obj2 = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float64)
+        np.savez_compressed(self.__obj2_filename(iter_count=-1, iter_step=0), obj2)
 
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)

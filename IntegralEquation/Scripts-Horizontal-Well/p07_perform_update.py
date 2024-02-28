@@ -29,18 +29,16 @@ if __name__ == "__main__":
     obj1_sum = np.sum(obj1)
     obj2_sum = np.sum(obj2)
 
-    fac = obj1_sum / obj2_sum
-
     print("obj1 = ", obj1_sum, ", obj2 = ", obj2_sum)
 
-    lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + fac
+    lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
     mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
 
     obj.perform_inversion_update_wavefield(
         iter_count=0,
         lambda_arr=lambda_arr,
         mu_arr=mu_arr,
-        max_iter=10,
+        max_iter=50,
         solver="lsmr",
         atol=1e-5,
         btol=1e-5,
