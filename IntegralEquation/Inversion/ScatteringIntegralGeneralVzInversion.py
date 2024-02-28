@@ -442,6 +442,9 @@ def update_wavefield(params):
     sm_model_pert_.close()
 
 
+def compute_initial_wavefields(params):
+    pass
+
 class ScatteringIntegralGeneralVzInversion2d:
 
     def __init__(self, basedir, restart=False, restart_code=None):
@@ -1012,12 +1015,148 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
+    def set_zero_initial_pert(self, num_procs=1):
+        """
+        Sets zero initial perturbation and wavefields computed based on it
+
+        :param num_procs: int
+            number of processors for multiprocessing while computing objective function
+
+        :return:
+        """
+
+        if self._state != 5:
+            print(
+                "\nOperation not allowed. Need self._state = 5, but obtained self._state = ", self._state
+            )
+            return
+
+        # Set zero initial perturbation
+        model_pert = np.zeros(shape=(self._nz, self._n), dtype=self._precision_real)
+        path = self.__model_pert_filename(iter_count=-1)
+        np.savez_compressed(path, model_pert)
+
+        print("\n\n---------------------------------------------")
+        print("Computing initial wavefields...\n")
+
+        with SharedMemoryManager() as smm:
+
+            # Create shared memory for Green's function
+            sm1 = smm.SharedMemory(size=self.__num_bytes_greens_func())
+            green_func = ndarray(shape=(self._nz, self._nz, 2 * self._n - 1), dtype=self._precision, buffer=sm1.buf)
+
+            # Create shared memory for source
+            sm2 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            source = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm2.buf)
+
+            # Create shared memory for wavefield
+            sm3 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            wavefield = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm3.buf)
+            wavefield *= 0
+
+            # Loop over k values
+            for k in range(self._num_k_values):
+
+                print("\n\n---------------------------------------------")
+                print("---------------------------------------------")
+                print("Starting k number ", k)
+
+                # Load Green's func into shared memory
+                green_func *= 0
+                green_func_filename = self.__greens_func_filename(num_k=k)
+                with np.load(green_func_filename) as f:
+                    green_func += f["arr_0"]
+
+                # Load source into shared memory
+                source *= 0
+                source_filename = self.__source_filename(num_k=k)
+                with np.load(source_filename) as f:
+                    source += f["arr_0"]
+
+                param_tuple_list = [
+                    (
+                        self._n,
+                        self._nz,
+                        self._a,
+                        self._b,
+                        self._k_values[k],
+                        self._vz,
+                        self._m,
+                        self._sigma_greens_func,
+                        self._precision,
+                        self._precision_real,
+                        self.greens_func_filedir(num_k=k),
+                        self._num_sources,
+                        sm1.name,
+                        sm2.name,
+                        sm3.name,
+                        i
+                    ) for i in range(self._num_sources)
+                ]
+
+                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                    max_ = len(param_tuple_list)
+
+                    with tqdm(total=max_) as pbar:
+                        for _ in pool.imap_unordered(compute_initial_wavefields, param_tuple_list):
+                            pbar.update()
+
+                # Write computed data to disk
+                np.savez_compressed(self.__wavefield_filename(iter_count=-1, num_k=k), wavefield)
+
+            # Compute objective functions
+            self.__compute_obj1(iter_count=-1)
+            self.__compute_obj2(iter_count=-1, iter_step=0, num_procs=num_procs)
+
+            self._state += 1
+            update_json(filename=self._param_file, key="state", val=self._state)
+            self.__print_reset_state_msg()
+
+        # Set zero initial wavefields
+        for k in range(self._num_k_values):
+            wavefield = np.zeros(
+                shape=(self._num_sources, self._nz, self._n), dtype=self._precision
+            )
+            path = self.__wavefield_filename(iter_count=-1, num_k=k)
+            np.savez_compressed(path, wavefield)
+
+        # Compute objective functions
+        self.__compute_obj1(iter_count=-1)
+        self.__compute_obj2(iter_count=-1, iter_step=1, num_procs=num_procs)
+
+        self._state += 1
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
+
+
     def perform_inversion_update_wavefield(
             self, iter_count=None,
             lambda_arr=None, mu_arr=None,
             max_iter=100, solver="lsmr", atol=1e-5, btol=1e-5,
             num_procs=1, clean=False
     ):
+        """
+        Perform inversion -- update wavefields
+
+        :param iter_count: int
+            Iteration number
+        :param lambda_arr: np.ndarray
+            Numpy array of lambda values
+        :param mu_arr: np.ndarray
+            Numpy array of mu values
+        :param max_iter: int
+            Maximum number of iterations allowed by lsqr / lsmr
+        :param solver: str
+            Solver name (lsqr or lsmr)
+        :param atol: float
+            atol for lsqr / lsmr
+        :param btol: float
+            btol for lsqr / lsmr
+        :param num_procs: int
+            Number of processors for multiprocessing while computing objective function
+        :param clean: bool
+            Clean all inversion results beyond requested step if True
+        """
 
         # ------------------------------------------------------
         # Check inputs
@@ -1244,6 +1383,8 @@ class ScatteringIntegralGeneralVzInversion2d:
         """
         Get inverted data. Follows 0 based indexing.
 
+        :param iter_count: int
+            Iteration number
         :param num_k: int
             k value number
         :param num_source: int
@@ -1594,7 +1735,6 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         num_bytes_obj2_arr = self._num_k_values * self._num_sources * 8
 
-        # Create and load Green's function into shared memory
         with SharedMemoryManager() as smm:
 
             # Create shared memory for obj2

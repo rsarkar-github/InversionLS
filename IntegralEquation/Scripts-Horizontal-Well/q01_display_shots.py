@@ -27,12 +27,12 @@ if __name__ == "__main__":
     zmax = (obj.b - obj.a)
     extent = [0, xmax * scale_fac_inv, zmax * scale_fac_inv, 0]
 
-    with np.load(obj.source_filename(i=num_k_val)) as data:
+    with np.load(obj.source_filename(num_k=num_k_val)) as data:
         source = data["arr_0"]
     src = source[num_source, :, :]
 
     scale = 1.0
-    plt.imshow(np.real(src), cmap="Greys", extent=extent, aspect=10, vmax=scale, vmin=-scale)
+    plt.imshow(np.real(src), cmap="Greys", extent=extent, aspect=1, vmax=scale, vmin=-scale)
     plt.xlabel(r'$x_1$ [km]')
     plt.ylabel(r'$z$ [km]')
     plt.show()
