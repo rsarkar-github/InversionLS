@@ -334,7 +334,6 @@ def update_wavefield(params):
 
     num_recs_ = rec_locs_.shape[0]
     def func_matvec(v):
-
         v = np.reshape(v, newshape=(nz_, n_))
         u = v * 0
         op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
@@ -380,7 +379,10 @@ def update_wavefield(params):
     rhs_ -= func_matvec(
         v=np.reshape(wavefield_[num_source_, :, :], newshape=(nz_ * n_, 1))
     )
+
     rhs_scale_ = np.linalg.norm(rhs_)
+    if rhs_scale_ < 1e-15:
+        rhs_scale_ = 1.0
     rhs_ = rhs_ / rhs_scale_
 
     del temp_
