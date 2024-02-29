@@ -37,7 +37,7 @@ def perform_inversion_update_pert(
     with SharedMemoryManager() as smm:
 
         # Create shared memory for Green's function
-        sm_greens_func = smm.SharedMemory(size=obj.__num_bytes_greens_func())
+        sm_greens_func = smm.SharedMemory(size=obj.num_bytes_greens_func())
         green_func = ndarray(
             shape=(obj.nz, obj.nz, 2 * obj.n - 1),
             dtype=obj.precision,
@@ -64,7 +64,7 @@ def perform_inversion_update_pert(
         sm_pert = smm.SharedMemory(size=obj.num_bytes_model_pert())
         pert = ndarray(shape=(obj.nz, obj.n), dtype=obj.precision_real, buffer=sm_pert.buf)
         pert *= 0
-        model_pert_filename = obj.model_pert_filename(iter_count=iter_count)
+        model_pert_filename = obj.model_pert_filename(iter_count=iter_count - 1)
         with np.load(model_pert_filename) as f:
             pert += f["arr_0"]
 
@@ -74,14 +74,6 @@ def perform_inversion_update_pert(
             shape=(obj.num_sources, obj.nz, obj.n),
             dtype=obj.precision,
             buffer=sm_rhs.buf
-        )
-
-        # Create shared memory for sum computation
-        sm_sum = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
-        sum = ndarray(
-            shape=(obj.num_sources, obj.nz, obj.n),
-            dtype=obj.precision,
-            buffer=sm_sum.buf
         )
 
         # ------------------------------------------------------
@@ -159,7 +151,7 @@ def perform_inversion_update_pert(
     with SharedMemoryManager() as smm:
 
         # Create shared memory for Green's function
-        sm_greens_func = smm.SharedMemory(size=obj.__num_bytes_greens_func())
+        sm_greens_func = smm.SharedMemory(size=obj.num_bytes_greens_func())
         green_func = ndarray(
             shape=(obj.nz, obj.nz, 2 * obj.n - 1),
             dtype=obj.precision,
@@ -199,7 +191,7 @@ def perform_inversion_update_pert(
             for k_ in range(obj.num_k_values):
 
                 print("\n---------------------------------------------")
-                print("Starting k number ", k)
+                print("Starting k number ", k_)
 
                 # Load Green's func into shared memory
                 green_func_filename_ = obj.greens_func_filename(num_k=k_)
@@ -269,11 +261,11 @@ def perform_inversion_update_pert(
         start_t = time.time()
         sol, exit_code = cg(
             linop_lse,
-            x=np.reshape(rhs_inv, newshape=(obj.nz * obj.n, )),
+            np.reshape(rhs_inv, newshape=(obj.nz * obj.n, )),
             atol=0,
-            rtol=tol,
+            tol=tol,
             maxiter=max_iter,
-            counter=counter
+            callback=counter
         )
         sol *= rhs_inv_scale
         end_t = time.time()
@@ -283,7 +275,7 @@ def perform_inversion_update_pert(
             ", exit code = ", exit_code
         )
 
-    return sol.astype(obj.precision_real)
+    return np.reshape(sol.astype(obj.precision_real), newshape=(obj.nz, obj.n))
 
 
 def green_func_calculate_mp_helper_func(params):
@@ -764,7 +756,7 @@ def compute_rhs_for_pert_update(params):
     wavefield_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_wavefield_.buf)
 
     sm_rhs_ = SharedMemory(sm_rhs_name_)
-    rhs_ = ndarray(shape=(nz_, n_), dtype=precision_, buffer=sm_rhs_.buf)
+    rhs_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_rhs_.buf)
 
     sm_model_pert_ = SharedMemory(sm_model_pert_name_)
     psi_ = ndarray(shape=(nz_, n_), dtype=precision_real_, buffer=sm_model_pert_.buf)

@@ -473,8 +473,6 @@ class TruncatedKernelGeneralVz3d:
         :param verbose: bool (if True print messages during Green's function calculation).
         """
 
-        print("\n\nInitializing the class")
-
         TypeChecker.check(x=n, expected_type=(int,))
         if n % 2 != 1 or n < 3:
             raise ValueError("n must be an odd integer >= 3")
@@ -1300,8 +1298,6 @@ class TruncatedKernelGeneralVz2d:
         :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         """
-
-        print("\n\nInitializing the class")
 
         TypeChecker.check(x=n, expected_type=(int,))
         if n % 2 != 1 or n < 3:

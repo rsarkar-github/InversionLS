@@ -464,7 +464,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             with SharedMemoryManager() as smm:
 
                 # Create shared memory and load Green's function into it
-                sm = smm.SharedMemory(size=self.__num_bytes_greens_func())
+                sm = smm.SharedMemory(size=self.num_bytes_greens_func())
                 data = ndarray(shape=(self._nz, self._nz, 2 * self._n - 1), dtype=self._precision, buffer=sm.buf)
                 data *= 0
 
@@ -473,7 +473,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                     data += f["arr_0"]
 
                 # Create shared memory for computed true data
-                sm1 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+                sm1 = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
                 data1 = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm1.buf)
                 data1 *= 0
 
@@ -612,15 +612,15 @@ class ScatteringIntegralGeneralVzInversion2d:
         with SharedMemoryManager() as smm:
 
             # Create shared memory for Green's function
-            sm1 = smm.SharedMemory(size=self.__num_bytes_greens_func())
+            sm1 = smm.SharedMemory(size=self.num_bytes_greens_func())
             green_func = ndarray(shape=(self._nz, self._nz, 2 * self._n - 1), dtype=self._precision, buffer=sm1.buf)
 
             # Create shared memory for source
-            sm2 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            sm2 = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
             source = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm2.buf)
 
             # Create shared memory for wavefield
-            sm3 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            sm3 = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
             wavefield = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm3.buf)
             wavefield *= 0
 
@@ -790,7 +790,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         with SharedMemoryManager() as smm:
 
             # Create shared memory for Green's function
-            sm_greens_func = smm.SharedMemory(size=self.__num_bytes_greens_func())
+            sm_greens_func = smm.SharedMemory(size=self.num_bytes_greens_func())
             green_func = ndarray(
                 shape=(self._nz, self._nz, 2 * self._n - 1),
                 dtype=self._precision,
@@ -798,7 +798,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             )
 
             # Create shared memory for source
-            sm_source = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            sm_source = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
             source = ndarray(
                 shape=(self._num_sources, self._nz, self._n),
                 dtype=self._precision,
@@ -806,7 +806,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             )
 
             # Create shared memory for wavefield
-            sm_wavefield = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            sm_wavefield = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
             wavefield = ndarray(
                 shape=(self._num_sources, self._nz, self._n),
                 dtype=self._precision,
@@ -814,7 +814,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             )
 
             # Create shared memory for true data
-            sm_true_data = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            sm_true_data = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
             true_data = ndarray(
                 shape=(self._num_sources, self._nz, self._n),
                 dtype=self._precision,
@@ -822,7 +822,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             )
 
             # Create shared memory for initial perturbation and load it
-            sm_pert = smm.SharedMemory(size=self.__num_bytes_model_pert())
+            sm_pert = smm.SharedMemory(size=self.num_bytes_model_pert())
             pert = ndarray(shape=(self._nz, self._n), dtype=self._precision_real, buffer=sm_pert.buf)
             pert *= 0
             model_pert_filename = self.__model_pert_filename(iter_count=iter_count - 1)
@@ -1325,7 +1325,40 @@ class ScatteringIntegralGeneralVzInversion2d:
                     return os.path.join(self._basedir, "iterations/initial_obj2_arr.npz")
                 else:
                     return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step1_arr.npz")
+    
+    def num_bytes_greens_func(self):
 
+        # Calculate num bytes for Green's function
+        num_bytes = self._nz * self._nz * (2 * self._n - 1)
+        if self._precision == np.complex64:
+            num_bytes *= 8
+        if self._precision == np.complex128:
+            num_bytes *= 16
+
+        return num_bytes
+
+    def num_bytes_true_data_per_k(self):
+
+        # Calculate num bytes for Green's function
+        num_bytes = self._num_sources * self._nz * self._n
+        if self._precision == np.complex64:
+            num_bytes *= 8
+        if self._precision == np.complex128:
+            num_bytes *= 16
+
+        return num_bytes
+
+    def num_bytes_model_pert(self):
+
+        # Calculate num bytes for model perturbation
+        num_bytes = self._nz * self._n
+        if self._precision_real == np.float32:
+            num_bytes *= 4
+        if self._precision_real == np.float64:
+            num_bytes *= 8
+
+        return num_bytes
+    
     def __compute_obj1(self, iter_count):
 
         print("\n\n---------------------------------------------")
@@ -1378,19 +1411,19 @@ class ScatteringIntegralGeneralVzInversion2d:
             obj2 *= 0
 
             # Create shared memory for Green's function
-            sm1 = smm.SharedMemory(size=self.__num_bytes_greens_func())
+            sm1 = smm.SharedMemory(size=self.num_bytes_greens_func())
             green_func = ndarray(shape=(self._nz, self._nz, 2 * self._n - 1), dtype=self._precision, buffer=sm1.buf)
 
             # Create shared memory for source
-            sm2 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            sm2 = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
             source = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm2.buf)
 
             # Create shared memory for wavefield
-            sm3 = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+            sm3 = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
             wavefield = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision, buffer=sm3.buf)
 
             # Create shared memory for perturbation and load it
-            sm4 = smm.SharedMemory(size=self.__num_bytes_model_pert())
+            sm4 = smm.SharedMemory(size=self.num_bytes_model_pert())
             pert = ndarray(shape=(self._nz, self._n), dtype=self._precision_real, buffer=sm4.buf)
             pert *= 0
 
@@ -1533,39 +1566,6 @@ class ScatteringIntegralGeneralVzInversion2d:
                 return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step0_arr.npz")
             if iter_step == 1:
                 return os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/obj2_step1_arr.npz")
-
-    def __num_bytes_greens_func(self):
-
-        # Calculate num bytes for Green's function
-        num_bytes = self._nz * self._nz * (2 * self._n - 1)
-        if self._precision == np.complex64:
-            num_bytes *= 8
-        if self._precision == np.complex128:
-            num_bytes *= 16
-
-        return num_bytes
-
-    def __num_bytes_true_data_per_k(self):
-
-        # Calculate num bytes for Green's function
-        num_bytes = self._num_sources * self._nz * self._n
-        if self._precision == np.complex64:
-            num_bytes *= 8
-        if self._precision == np.complex128:
-            num_bytes *= 16
-
-        return num_bytes
-
-    def __num_bytes_model_pert(self):
-
-        # Calculate num bytes for model perturbation
-        num_bytes = self._nz * self._n
-        if self._precision_real == np.float32:
-            num_bytes *= 4
-        if self._precision_real == np.float64:
-            num_bytes *= 8
-
-        return num_bytes
 
     def __print_reset_state_msg(self):
 
