@@ -1,6 +1,6 @@
 import numpy as np
 from numpy import ndarray
-from scipy.sparse.linalg import LinearOperator, gmres, lsqr, lsmr
+from scipy.sparse.linalg import LinearOperator, gmres, lsqr, lsmr, cg
 import time
 import multiprocessing as mp
 from multiprocessing import Pool
@@ -12,15 +12,15 @@ from ...Utilities.LinearSolvers import gmres_counter
 
 
 def perform_inversion_update_pert(
-        obj_params, iter_count=None,
-        max_iter=100, tol=1e-5,
-        num_procs=1, clean=False
+        obj, iter_count,
+        max_iter=100, tol=1e-5, num_procs=1
 ):
     """
-    Perform inversion -- update wavefields
+    Perform inversion -- update wavefields.
+    No parameter checking is performed.
 
-    :param obj_params: ScatteringIntegralGeneralVzInversion2d params
-        Dictionary containing some inversion object parameters
+    :param obj: ScatteringIntegralGeneralVzInversion2d
+        Inversion object
     :param iter_count: int
         Iteration number
     :param max_iter: int
@@ -29,62 +29,58 @@ def perform_inversion_update_pert(
         tol for CG
     :param num_procs: int
         Number of processors for multiprocessing while computing objective function
-    :param clean: bool
-        Clean all inversion results beyond requested step if True
     """
 
-
-
     # ------------------------------------------------------
-    # Perform update of perturbation
+    # Compute rhs
 
     with SharedMemoryManager() as smm:
 
         # Create shared memory for Green's function
-        sm_greens_func = smm.SharedMemory(size=self.__num_bytes_greens_func())
+        sm_greens_func = smm.SharedMemory(size=obj.__num_bytes_greens_func())
         green_func = ndarray(
-            shape=(self._nz, self._nz, 2 * self._n - 1),
-            dtype=self._precision,
+            shape=(obj.nz, obj.nz, 2 * obj.n - 1),
+            dtype=obj.precision,
             buffer=sm_greens_func.buf
         )
 
         # Create shared memory for source
-        sm_source = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+        sm_source = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
         source = ndarray(
-            shape=(self._num_sources, self._nz, self._n),
-            dtype=self._precision,
+            shape=(obj.num_sources, obj.nz, obj.n),
+            dtype=obj.precision,
             buffer=sm_source.buf
         )
 
         # Create shared memory for wavefield
-        sm_wavefield = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+        sm_wavefield = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
         wavefield = ndarray(
-            shape=(self._num_sources, self._nz, self._n),
-            dtype=self._precision,
+            shape=(obj.num_sources, obj.nz, obj.n),
+            dtype=obj.precision,
             buffer=sm_wavefield.buf
         )
 
         # Create shared memory for initial perturbation and load it
-        sm_pert = smm.SharedMemory(size=self.__num_bytes_model_pert())
-        pert = ndarray(shape=(self._nz, self._n), dtype=self._precision_real, buffer=sm_pert.buf)
+        sm_pert = smm.SharedMemory(size=obj.num_bytes_model_pert())
+        pert = ndarray(shape=(obj.nz, obj.n), dtype=obj.precision_real, buffer=sm_pert.buf)
         pert *= 0
-        model_pert_filename = self.__model_pert_filename(iter_count=iter_count)
+        model_pert_filename = obj.model_pert_filename(iter_count=iter_count)
         with np.load(model_pert_filename) as f:
             pert += f["arr_0"]
 
         # Create shared memory for rhs computation
-        sm_rhs = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+        sm_rhs = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
         rhs = ndarray(
-            shape=(self._num_sources, self._nz, self._n),
-            dtype=self._precision,
+            shape=(obj.num_sources, obj.nz, obj.n),
+            dtype=obj.precision,
             buffer=sm_rhs.buf
         )
 
         # Create shared memory for sum computation
-        sm_sum = smm.SharedMemory(size=self.__num_bytes_true_data_per_k())
+        sm_sum = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
         sum = ndarray(
-            shape=(self._num_sources, self._nz, self._n),
-            dtype=self._precision,
+            shape=(obj.num_sources, obj.nz, obj.n),
+            dtype=obj.precision,
             buffer=sm_sum.buf
         )
 
@@ -95,53 +91,53 @@ def perform_inversion_update_pert(
         print("---------------------------------------------")
         print("Computing rhs for inversion...")
 
-        rhs_inv = np.zeros(shape=(self._nz, self._n), dtype=self._precision)
+        rhs_inv = np.zeros(shape=(obj.nz, obj.n), dtype=obj.precision)
 
         # Loop over k values
-        for k in range(self._num_k_values):
+        for k in range(obj.num_k_values):
 
             print("\n---------------------------------------------")
             print("Starting k number ", k)
 
             # Load Green's func into shared memory
             green_func *= 0
-            green_func_filename = self.__greens_func_filename(num_k=k)
+            green_func_filename = obj.greens_func_filename(num_k=k)
             with np.load(green_func_filename) as f:
                 green_func += f["arr_0"]
 
             # Load source into shared memory
             source *= 0
-            source_filename = self.__source_filename(num_k=k)
+            source_filename = obj.source_filename(num_k=k)
             with np.load(source_filename) as f:
                 source += f["arr_0"]
 
             # Load initial wavefield into shared memory
             wavefield *= 0
-            wavefield_filename = self.__wavefield_filename(num_k=k, iter_count=iter_count)
+            wavefield_filename = obj.wavefield_filename(num_k=k, iter_count=iter_count)
             with np.load(wavefield_filename) as f:
                 wavefield += f["arr_0"]
 
             param_tuple_list = [
                 (
-                    self._n,
-                    self._nz,
-                    self._a,
-                    self._b,
-                    self._k_values[k],
-                    self._vz,
-                    self._m,
-                    self._sigma_greens_func,
-                    self._precision,
-                    self._precision_real,
-                    self.greens_func_filedir(num_k=k),
-                    self._num_sources,
+                    obj.n,
+                    obj.nz,
+                    obj.a,
+                    obj.b,
+                    obj.k_values[k],
+                    obj.vz,
+                    obj.m,
+                    obj.sigma_greens_func,
+                    obj.precision,
+                    obj.precision_real,
+                    obj.greens_func_filedir(num_k=k),
+                    obj.num_sources,
                     i,
                     sm_greens_func.name,
                     sm_source.name,
                     sm_wavefield.name,
                     sm_pert.name,
                     sm_rhs.name
-                ) for i in range(self._num_sources)
+                ) for i in range(obj.num_sources)
             ]
 
             with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
@@ -152,27 +148,142 @@ def perform_inversion_update_pert(
                         pbar.update()
 
             # Sum the result
-            for i in range(self._num_sources):
-                rhs_inv += rhs[i, :, :]
+            rhs_inv += np.sum(rhs, axis=0)
+
+        # Take real part
+        rhs_inv = np.real(rhs_inv).astype(obj.precision_real)
+
+    # ------------------------------------------------------
+    # Perform inversion
+
+    with SharedMemoryManager() as smm:
+
+        # Create shared memory for Green's function
+        sm_greens_func = smm.SharedMemory(size=obj.__num_bytes_greens_func())
+        green_func = ndarray(
+            shape=(obj.nz, obj.nz, 2 * obj.n - 1),
+            dtype=obj.precision,
+            buffer=sm_greens_func.buf
+        )
+
+        # Create shared memory for wavefield
+        sm_wavefield = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
+        wavefield = ndarray(
+            shape=(obj.num_sources, obj.nz, obj.n),
+            dtype=obj.precision,
+            buffer=sm_wavefield.buf
+        )
+
+        # Create shared memory for sum computation
+        sm_sumarr = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
+        sumarr = ndarray(
+            shape=(obj.num_sources, obj.nz, obj.n),
+            dtype=obj.precision,
+            buffer=sm_sumarr.buf
+        )
 
         # ------------------------------------------------------
         # Define linear operator
+
+        def zero_and_add(x_, f_):
+            x_ *= 0
+            x_ += f_
+
+        def func_linop(v):
+
+            start_tt_ = time.time()
+
+            v = np.reshape(v, newshape=(obj.nz, obj.n))
+            sum_accumulated = v * 0
+
+            for k_ in range(obj.num_k_values):
+
+                print("\n---------------------------------------------")
+                print("Starting k number ", k)
+
+                # Load Green's func into shared memory
+                green_func_filename_ = obj.greens_func_filename(num_k=k_)
+                with np.load(green_func_filename_) as f_:
+                    zero_and_add(green_func, f_["arr_0"])
+
+                # Load initial wavefield into shared memory
+                wavefield_filename_ = obj.wavefield_filename(num_k=k_, iter_count=iter_count)
+                with np.load(wavefield_filename_) as f_:
+                    zero_and_add(wavefield, f_["arr_0"])
+
+                param_tuple_list_ = [
+                    (
+                        obj.n,
+                        obj.nz,
+                        obj.a,
+                        obj.b,
+                        obj.k_values[k_],
+                        obj.vz,
+                        obj.m,
+                        obj.sigma_greens_func,
+                        obj.precision,
+                        obj.greens_func_filedir(num_k=k_),
+                        obj.num_sources,
+                        i,
+                        v,
+                        sm_greens_func.name,
+                        sm_wavefield.name,
+                        sm_sumarr.name
+                    ) for i in range(obj.num_sources)
+                ]
+
+                with Pool(min(len(param_tuple_list_), mp.cpu_count(), num_procs)) as pool_:
+                    maxx_ = len(param_tuple_list_)
+
+                    with tqdm(total=maxx_) as pbar_:
+                        for _ in pool_.imap_unordered(compute_matvec_for_pert_update, param_tuple_list_):
+                            pbar_.update()
+
+                # Sum the result
+                sum_accumulated += np.real(np.sum(sumarr, axis=0)).astype(obj.precision_real)
+
+            end_tt_ = time.time()
+            print(
+                "Total time for internal CG iteration: ", "{:4.2f}".format(end_tt_ - start_tt_), " s"
+            )
+
+            # Return result
+            return np.reshape(sum_accumulated, newshape=(obj.nz * obj.n,))
+
+        linop_lse = LinearOperator(
+            shape=(obj.nz * obj.n, obj.nz * obj.n),
+            matvec=func_linop,
+            dtype=obj.precision
+        )
 
         print("\n\n---------------------------------------------")
         print("---------------------------------------------")
         print("Starting linear inversion...")
 
-        def func_linop(v):
+        rhs_inv_scale = np.linalg.norm(rhs_inv)
+        if rhs_inv_scale < 1e-15:
+            rhs_inv_scale = 1.0
+        rhs_inv = rhs_inv / rhs_inv_scale
 
-            for k in range(self._num_k_values):
-                print("\n---------------------------------------------")
-                print("Starting k number ", k)
+        counter = gmres_counter()
+        start_t = time.time()
+        sol, exit_code = cg(
+            linop_lse,
+            x=np.reshape(rhs_inv, newshape=(obj.nz * obj.n, )),
+            atol=0,
+            rtol=tol,
+            maxiter=max_iter,
+            counter=counter
+        )
+        sol *= rhs_inv_scale
+        end_t = time.time()
 
-                # Load Green's func into shared memory
-                green_func *= 0
-                green_func_filename = self.__greens_func_filename(num_k=k)
-                with np.load(green_func_filename) as f:
-                    green_func += f["arr_0"]
+        print(
+            "Total time for iteration: ", "{:4.2f}".format(end_t - start_t), " s",
+            ", exit code = ", exit_code
+        )
+
+    return sol.astype(obj.precision_real)
 
 
 def green_func_calculate_mp_helper_func(params):
@@ -674,6 +785,83 @@ def compute_rhs_for_pert_update(params):
     sm_wavefield_.close()
     sm_model_pert_.close()
     sm_rhs_.close()
+
+
+def compute_matvec_for_pert_update(params):
+
+    # ------------------------------------------------------
+    # Read all parameters
+
+    n_ = int(params[0])
+    nz_ = int(params[1])
+    a_ = float(params[2])
+    b_ = float(params[3])
+    k_ = float(params[4])
+    vz_ = params[5]
+    m_ = int(params[6])
+    sigma_ = float(params[7])
+    precision_ = params[8]
+    green_func_dir_ = str(params[9])
+    num_sources_ = int(params[10])
+    num_source_ = int(params[11])
+    v = params[12]
+    sm_green_func_name_ = str(params[13])
+    sm_wavefield_name_ = str(params[14])
+    sm_sumarr_name_ = str(params[15])
+
+    # ------------------------------------------------------
+    # Create Lippmann-Schwinger operator
+    # Attach to shared memory for Green's function
+
+    op_ = TruncatedKernelGeneralVz2d(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1,
+        no_mpi=True, verbose=False, light_mode=True
+    )
+
+    op_.set_parameters(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1, green_func_set=False,
+        no_mpi=True, verbose=False
+    )
+
+    sm_green_func_ = SharedMemory(sm_green_func_name_)
+    green_func_ = ndarray(shape=(nz_, nz_, 2 * n_ - 1), dtype=precision_, buffer=sm_green_func_.buf)
+    op_.greens_func = green_func_
+
+    # ------------------------------------------------------
+    # Attach to shared memory for wavefield, sumarr
+
+    sm_wavefield_ = SharedMemory(sm_wavefield_name_)
+    wavefield_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_wavefield_.buf)
+
+    sm_sumarr_ = SharedMemory(sm_sumarr_name_)
+    sumarr_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_sumarr_.buf)
+
+    # ------------------------------------------------------
+    # Compute the matvec product
+    temp_ = (k_ ** 4.0) * v * wavefield_[num_source_, :, :]
+    temp_ = temp_.astype(precision_)
+    op_.apply_kernel(
+        u=temp_,
+        output=sumarr_[num_source_, :, :],
+        adj=False,
+        add=False
+    )
+    op_.apply_kernel(
+        u=sumarr_[num_source_, :, :],
+        output=temp_,
+        adj=True,
+        add=False
+    )
+    sumarr_[num_source_, :, :] = temp_ * np.conjugate(wavefield_[num_source_, :, :])
+
+    # ------------------------------------------------------
+    # Release shared memory
+
+    sm_green_func_.close()
+    sm_wavefield_.close()
+    sm_sumarr_.close()
 
 
 def compute_initial_wavefields(params):

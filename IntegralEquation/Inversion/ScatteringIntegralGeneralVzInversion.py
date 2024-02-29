@@ -932,7 +932,6 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-
     def perform_inversion_update_model_pert(
             self, iter_count=None,
             max_iter=100, tol=1e-5,
@@ -994,12 +993,26 @@ class ScatteringIntegralGeneralVzInversion2d:
         # ------------------------------------------------------
         # Update perturbation
 
-        helperclass2d.perform_inversion_update_pert(
-            obj_params=self,
-            iter_count=None,
-            max_iter=100, tol=1e-5,
-            num_procs=1, clean=False
+        updated_pert = helperclass2d.perform_inversion_update_pert(
+            obj=self,
+            iter_count=iter_count,
+            max_iter=max_iter, tol=tol,
+            num_procs=num_procs
         )
+
+        # Write computed perturbation to disk
+        np.savez_compressed(self.__model_pert_filename(iter_count=iter_count), updated_pert)
+
+        # ------------------------------------------------------
+        # Compute objective function
+
+        self.__compute_obj2(iter_count=iter_count, iter_step=1, num_procs=num_procs)
+
+        # ------------------------------------------------------
+        # Update parameter file
+
+        self._last_iter_step = 1
+        update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
 
     def get_inverted_wavefield(self, iter_count, num_k, num_source):
         """
