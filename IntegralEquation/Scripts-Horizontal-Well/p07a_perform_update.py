@@ -39,7 +39,7 @@ if __name__ == "__main__":
         lambda_arr=lambda_arr,
         mu_arr=mu_arr,
         max_iter=50,
-        solver="lsmr",
+        solver="lsqr",
         atol=1e-5,
         btol=1e-5,
         num_procs=40,
