@@ -686,7 +686,7 @@ class ScatteringIntegralGeneralVzInversion2d:
     def perform_inversion_update_wavefield(
             self, iter_count=None,
             lambda_arr=None, mu_arr=None,
-            max_iter=100, solver="lsmr", atol=1e-5, btol=1e-5,
+            max_iter=100, solver="cg", atol=1e-5, btol=1e-5,
             num_procs=1, clean=False
     ):
         """
@@ -728,8 +728,8 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         TypeChecker.check_int_positive(x=max_iter)
         TypeChecker.check(x=solver, expected_type=(str,))
-        if solver not in ["lsqr", "lsmr"]:
-            print("solver type not supported. Only solvers available are lsqr and lsmr.")
+        if solver not in ["lsqr", "lsmr", "cg"]:
+            print("solver type not supported. Only solvers available are lsqr, lsmr, and cg.")
             return
         TypeChecker.check_float_bounds(x=atol, lb=1e-5, ub=1.0)
         TypeChecker.check_float_bounds(x=btol, lb=1e-5, ub=1.0)
@@ -831,7 +831,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
             # Loop over k values
             for k in range(self._num_k_values):
-
+            # for k in range(15, 16):
                 print("\n\n---------------------------------------------")
                 print("---------------------------------------------")
                 print("Starting k number ", k)
@@ -887,15 +887,24 @@ class ScatteringIntegralGeneralVzInversion2d:
                         solver,
                         atol,
                         btol
-                    ) for i in range(self._num_sources)
+                    ) for i in range(self._num_sources) #for i in range(25, 26) #
                 ]
 
-                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                    max_ = len(param_tuple_list)
+                if solver in ["lsqr", "lsmr"]:
+                    with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                        max_ = len(param_tuple_list)
 
-                    with tqdm(total=max_) as pbar:
-                        for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
-                            pbar.update()
+                        with tqdm(total=max_) as pbar:
+                            for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
+                                pbar.update()
+
+                if solver == "cg":
+                    with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                        max_ = len(param_tuple_list)
+
+                        with tqdm(total=max_) as pbar:
+                            for _ in pool.imap_unordered(helperclass2d.update_wavefield_cg, param_tuple_list):
+                                pbar.update()
 
                 # Write computed wavefield to disk
                 np.savez_compressed(self.__wavefield_filename(iter_count=iter_count, num_k=k), wavefield)

@@ -8,7 +8,7 @@ from multiprocessing.shared_memory import SharedMemory
 from multiprocessing.managers import SharedMemoryManager
 from tqdm import tqdm
 from ..Solver.ScatteringIntegralGeneralVz import TruncatedKernelGeneralVz2d
-from ...Utilities.LinearSolvers import gmres_counter
+from ...Utilities.LinearSolvers import gmres_counter, conjugate_gradient
 
 
 def perform_inversion_update_pert(
@@ -105,7 +105,8 @@ def perform_inversion_update_pert(
 
             # Load initial wavefield into shared memory
             wavefield *= 0
-            wavefield_filename = obj.wavefield_filename(num_k=k, iter_count=iter_count)
+            # wavefield_filename = obj.wavefield_filename(num_k=k, iter_count=iter_count)
+            wavefield_filename = obj.true_data_filename(num_k=k)
             with np.load(wavefield_filename) as f:
                 wavefield += f["arr_0"]
 
@@ -190,6 +191,9 @@ def perform_inversion_update_pert(
 
             for k_ in range(obj.num_k_values):
 
+                if k in range(13,18):
+                    continue
+
                 print("\n---------------------------------------------")
                 print("Starting k number ", k_)
 
@@ -236,7 +240,7 @@ def perform_inversion_update_pert(
 
             end_tt_ = time.time()
             print(
-                "Total time for internal CG iteration: ", "{:4.2f}".format(end_tt_ - start_tt_), " s"
+                "Total time for operator application: ", "{:4.2f}".format(end_tt_ - start_tt_), " s"
             )
 
             # Return result
@@ -247,6 +251,18 @@ def perform_inversion_update_pert(
             matvec=func_linop,
             dtype=obj.precision
         )
+
+        a1 = np.random.randn(obj.nz * obj.n,).astype(obj.precision_real)
+        a2 = np.random.randn(obj.nz * obj.n,).astype(obj.precision_real)
+        b1 = func_linop(v=a1)
+        b2 = func_linop(v=a2)
+
+        dp1 = np.dot(a2, b1)
+        dp2 = np.dot(b2, a1)
+
+        print("dp1 = ", dp1, "dp2 = ", dp2)
+
+        exit(1)
 
         print("\n\n---------------------------------------------")
         print("---------------------------------------------")
@@ -692,6 +708,194 @@ def update_wavefield(params):
             ", normr_ = ", normr_,
             ", normar_ = ", normar_
         )
+
+    # ------------------------------------------------------
+    # Release shared memory
+    sm_green_func_.close()
+    sm_source_.close()
+    sm_wavefield_.close()
+    sm_true_data_.close()
+    sm_model_pert_.close()
+
+
+def update_wavefield_cg(params):
+
+    # ------------------------------------------------------
+    # Read all parameters
+
+    n_ = int(params[0])
+    nz_ = int(params[1])
+    a_ = float(params[2])
+    b_ = float(params[3])
+    k_ = float(params[4])
+    vz_ = params[5]
+    m_ = int(params[6])
+    sigma_ = float(params[7])
+    precision_ = params[8]
+    precision_real_ = params[9]
+    green_func_dir_ = str(params[10])
+    num_sources_ = int(params[11])
+    rec_locs_ = params[12]
+    num_source_ = int(params[13])
+    lambda_ = float(params[14])
+    mu_ = float(params[15])
+    sm_green_func_name_ = str(params[16])
+    sm_source_name_ = str(params[17])
+    sm_wavefield_name_ = str(params[18])
+    sm_true_data_name_ = str(params[19])
+    sm_model_pert_name_ = str(params[20])
+    max_iter_ = int(params[21])
+    solver_ = str(params[22])
+    atol_ = float(params[23])
+    btol_ = float(params[24])
+
+    # ------------------------------------------------------
+    # Create Lippmann-Schwinger operator
+    # Attach to shared memory for Green's function
+
+    op_ = TruncatedKernelGeneralVz2d(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1,
+        no_mpi=True, verbose=False, light_mode=True
+    )
+
+    op_.set_parameters(
+        n=n_, nz=nz_, a=a_, b=b_, k=k_, vz=vz_, m=m_, sigma=sigma_, precision=precision_,
+        green_func_dir=green_func_dir_, num_threads=1, green_func_set=False,
+        no_mpi=True, verbose=False
+    )
+
+    sm_green_func_ = SharedMemory(sm_green_func_name_)
+    green_func_ = ndarray(shape=(nz_, nz_, 2 * n_ - 1), dtype=precision_, buffer=sm_green_func_.buf)
+    op_.greens_func = green_func_
+
+    # ------------------------------------------------------
+    # Attach to shared memory for source, wavefield, true data, model_pert
+
+    sm_source_ = SharedMemory(sm_source_name_)
+    source_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_source_.buf)
+
+    sm_wavefield_ = SharedMemory(sm_wavefield_name_)
+    wavefield_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_wavefield_.buf)
+
+    sm_true_data_ = SharedMemory(sm_true_data_name_)
+    true_data_ = ndarray(shape=(num_sources_, nz_, n_), dtype=precision_, buffer=sm_true_data_.buf)
+
+    sm_model_pert_ = SharedMemory(sm_model_pert_name_)
+    psi_ = ndarray(shape=(nz_, n_), dtype=precision_real_, buffer=sm_model_pert_.buf)
+
+    # ------------------------------------------------------
+    # Define linear operator objects
+    # Compute rhs (scale to norm 1)
+
+    num_recs_ = rec_locs_.shape[0]
+    def func_normal_op(v, out):
+
+        v = np.reshape(v, newshape=(nz_, n_))
+        u = v * 0
+        op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
+        u = v - (k_ ** 2) * u
+        u *= lambda_
+
+        out *= 0
+        out = np.reshape(out, newshape=(nz_, n_))
+        op_.apply_kernel(u=u, output=out, adj=True, add=False)
+        out = u - (k_ ** 2) * u * psi_
+        out *= lambda_
+
+        u *= 0
+        u[rec_locs_[:, 0], rec_locs_[:, 1]] = v[rec_locs_[:, 0], rec_locs_[:, 1]]
+        u *= (mu_ ** 2.0)
+
+        out += u
+
+        out = np.reshape(out, newshape=(nz_ * n_,))
+        v = np.reshape(v, newshape=(nz_ * n_,))
+
+    def func_normal_op1(v):
+
+        v = np.reshape(v, newshape=(nz_, n_))
+        u = v * 0
+        op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
+        u = v - (k_ ** 2) * u
+        u *= lambda_
+
+        out = v * 0
+        out = np.reshape(out, newshape=(nz_, n_))
+        op_.apply_kernel(u=u, output=out, adj=True, add=False)
+        out = u - (k_ ** 2) * u * psi_
+        out *= lambda_
+
+        u *= 0
+        u[rec_locs_[:, 0], rec_locs_[:, 1]] = v[rec_locs_[:, 0], rec_locs_[:, 1]]
+        u *= (mu_ ** 2.0)
+
+        out += u
+
+        return np.reshape(out, newshape=(nz_ * n_,))
+
+    def func_matvec_adj(v):
+
+        v1 = np.reshape(v[0:nz_ * n_], newshape=(nz_, n_))
+        u = v1 * 0
+        op_.apply_kernel(u=v1, output=u, adj=True, add=False)
+        u = lambda_ * np.reshape(v1 - (k_ ** 2) * u * psi_, newshape=(nz_ * n_,))
+
+        v1 *= 0
+        v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_ * n_:]
+        v1 = np.reshape(v1, newshape=(nz_ * n_,))
+
+        return u + v1
+
+    linop_lse = LinearOperator(
+        shape=(nz_ * n_, nz_ * n_),
+        matvec=func_normal_op1,
+        dtype=precision_
+    )
+
+    temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+    op_.apply_kernel(u=source_[num_source_, :, :], output=temp_)
+    temp_ = lambda_ * np.reshape(temp_, newshape=(nz_ * n_,))
+
+    temp1_ = true_data_[num_source_, :, :]
+    temp1_ = np.reshape(mu_ * temp1_[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
+
+    temp2_ = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
+    temp2_[0:nz_ * n_] = temp_
+    temp2_[nz_ * n_:] = temp1_
+
+    rhs_ = func_matvec_adj(v=temp2_)
+    rhs_ -= func_normal_op1(
+        v=np.reshape(wavefield_[num_source_, :, :], newshape=(nz_ * n_,))
+    )
+
+    rhs_scale_ = np.linalg.norm(rhs_)
+    if rhs_scale_ < 1e-15:
+        rhs_scale_ = 1.0
+    rhs_ = rhs_ / rhs_scale_
+
+    del temp_, temp1_, temp2_
+
+    # ------------------------------------------------------
+    # Solve for solution
+    counter = gmres_counter()
+    start_t_ = time.time()
+    sol_, exit_code_ = cg(
+            linop_lse,
+            rhs_,
+            atol=0,
+            tol=btol_,
+            maxiter=max_iter_,
+            callback=counter
+    )
+
+    wavefield_[num_source_, :, :] += np.reshape(sol_, newshape=(nz_, n_))
+    end_t_ = time.time()
+    print(
+        "Shot num = ", num_source_,
+        ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
+        ", exit code = ", exit_code_
+    )
 
     # ------------------------------------------------------
     # Release shared memory
