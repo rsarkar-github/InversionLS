@@ -843,9 +843,6 @@ def perform_inversion_update_pert(
 
             for k_ in range(obj.num_k_values):
 
-                if k_ not in range(14, 17):
-                    continue
-
                 print("\n---------------------------------------------")
                 print("Starting k number ", k_)
 
