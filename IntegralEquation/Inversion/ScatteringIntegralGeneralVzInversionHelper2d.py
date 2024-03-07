@@ -789,30 +789,8 @@ def update_wavefield_cg(params):
     # Compute rhs (scale to norm 1)
 
     num_recs_ = rec_locs_.shape[0]
-    def func_normal_op(v, out):
 
-        v = np.reshape(v, newshape=(nz_, n_))
-        u = v * 0
-        op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
-        u = v - (k_ ** 2) * u
-        u *= lambda_
-
-        out *= 0
-        out = np.reshape(out, newshape=(nz_, n_))
-        op_.apply_kernel(u=u, output=out, adj=True, add=False)
-        out = u - (k_ ** 2) * u * psi_
-        out *= lambda_
-
-        u *= 0
-        u[rec_locs_[:, 0], rec_locs_[:, 1]] = v[rec_locs_[:, 0], rec_locs_[:, 1]]
-        u *= (mu_ ** 2.0)
-
-        out += u
-
-        out = np.reshape(out, newshape=(nz_ * n_,))
-        v = np.reshape(v, newshape=(nz_ * n_,))
-
-    def func_normal_op1(v):
+    def func_normal_op(v):
 
         v = np.reshape(v, newshape=(nz_, n_))
         u = v * 0
@@ -849,7 +827,7 @@ def update_wavefield_cg(params):
 
     linop_lse = LinearOperator(
         shape=(nz_ * n_, nz_ * n_),
-        matvec=func_normal_op1,
+        matvec=func_normal_op,
         dtype=precision_
     )
 
@@ -865,7 +843,7 @@ def update_wavefield_cg(params):
     temp2_[nz_ * n_:] = temp1_
 
     rhs_ = func_matvec_adj(v=temp2_)
-    rhs_ -= func_normal_op1(
+    rhs_ -= func_normal_op(
         v=np.reshape(wavefield_[num_source_, :, :], newshape=(nz_ * n_,))
     )
 
@@ -889,7 +867,7 @@ def update_wavefield_cg(params):
             callback=counter
     )
 
-    wavefield_[num_source_, :, :] += np.reshape(sol_, newshape=(nz_, n_))
+    wavefield_[num_source_, :, :] += np.reshape(sol_ * rhs_scale_, newshape=(nz_, n_))
     end_t_ = time.time()
     print(
         "Shot num = ", num_source_,
