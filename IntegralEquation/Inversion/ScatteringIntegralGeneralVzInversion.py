@@ -1375,7 +1375,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         obj1 = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float64)
         true_data = np.zeros(shape=(self._num_sources, self._nz, self._n), dtype=self._precision)
-        iter_data = ndarray(shape=(self._num_sources, self._nz, self._n), dtype=self._precision)
+        iter_data = np.zeros(shape=(self._num_sources, self._nz, self._n), dtype=self._precision)
 
         rec_locs = np.asarray(self._rec_locs, dtype=int)
 
