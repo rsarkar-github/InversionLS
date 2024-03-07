@@ -855,15 +855,13 @@ def update_wavefield_cg(params):
 
     # ------------------------------------------------------
     # Solve for solution
-    counter = gmres_counter()
     start_t_ = time.time()
     sol_, exit_code_ = cg(
             linop_normal_op,
             rhs_,
             atol=0,
             tol=btol_,
-            maxiter=max_iter_,
-            callback=counter
+            maxiter=max_iter_
     )
 
     wavefield_[num_source_, :, :] += np.reshape(sol_ * rhs_scale_, newshape=(nz_, n_))
