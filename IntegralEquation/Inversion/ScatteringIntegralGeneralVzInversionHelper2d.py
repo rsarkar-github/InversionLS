@@ -685,118 +685,118 @@ def perform_inversion_update_pert(
     # ------------------------------------------------------
     # Compute rhs
 
-    with SharedMemoryManager() as smm:
-
-        # Create shared memory for Green's function
-        sm_greens_func = smm.SharedMemory(size=obj.num_bytes_greens_func())
-        green_func = ndarray(
-            shape=(obj.nz, obj.nz, 2 * obj.n - 1),
-            dtype=obj.precision,
-            buffer=sm_greens_func.buf
-        )
-
-        # Create shared memory for source
-        sm_source = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
-        source = ndarray(
-            shape=(obj.num_sources, obj.nz, obj.n),
-            dtype=obj.precision,
-            buffer=sm_source.buf
-        )
-
-        # Create shared memory for wavefield
-        sm_wavefield = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
-        wavefield = ndarray(
-            shape=(obj.num_sources, obj.nz, obj.n),
-            dtype=obj.precision,
-            buffer=sm_wavefield.buf
-        )
-
-        # Create shared memory for initial perturbation and load it
-        sm_pert = smm.SharedMemory(size=obj.num_bytes_model_pert())
-        pert = ndarray(shape=(obj.nz, obj.n), dtype=obj.precision_real, buffer=sm_pert.buf)
-        pert *= 0
-        model_pert_filename = obj.model_pert_filename(iter_count=iter_count - 1)
-        with np.load(model_pert_filename) as f:
-            pert += f["arr_0"]
-
-        # Create shared memory for rhs computation
-        sm_rhs = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
-        rhs = ndarray(
-            shape=(obj.num_sources, obj.nz, obj.n),
-            dtype=obj.precision,
-            buffer=sm_rhs.buf
-        )
-
-        # ------------------------------------------------------
-        # Compute rhs
-
-        print("\n\n---------------------------------------------")
-        print("---------------------------------------------")
-        print("Computing rhs for inversion...")
-
-        rhs_inv = np.zeros(shape=(obj.nz, obj.n), dtype=obj.precision)
-
-        # Loop over k values
-        for k in range(obj.num_k_values):
-
-            print("\n---------------------------------------------")
-            print("Starting k number ", k)
-
-            # Load Green's func into shared memory
-            green_func *= 0
-            green_func_filename = obj.greens_func_filename(num_k=k)
-            with np.load(green_func_filename) as f:
-                green_func += f["arr_0"]
-
-            # Load source into shared memory
-            source *= 0
-            source_filename = obj.source_filename(num_k=k)
-            with np.load(source_filename) as f:
-                source += f["arr_0"]
-
-            # Load initial wavefield into shared memory
-            wavefield *= 0
-            # TODO: change
-            # wavefield_filename = obj.wavefield_filename(num_k=k, iter_count=iter_count)
-            wavefield_filename = obj.true_data_filename(num_k=k)
-            with np.load(wavefield_filename) as f:
-                wavefield += f["arr_0"]
-
-            param_tuple_list = [
-                (
-                    obj.n,
-                    obj.nz,
-                    obj.a,
-                    obj.b,
-                    obj.k_values[k],
-                    obj.vz,
-                    obj.m,
-                    obj.sigma_greens_func,
-                    obj.precision,
-                    obj.precision_real,
-                    obj.greens_func_filedir(num_k=k),
-                    obj.num_sources,
-                    i,
-                    sm_greens_func.name,
-                    sm_source.name,
-                    sm_wavefield.name,
-                    sm_pert.name,
-                    sm_rhs.name
-                ) for i in range(obj.num_sources)
-            ]
-
-            with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                max_ = len(param_tuple_list)
-
-                with tqdm(total=max_) as pbar:
-                    for _ in pool.imap_unordered(compute_rhs_for_pert_update, param_tuple_list):
-                        pbar.update()
-
-            # Sum the result
-            rhs_inv += np.sum(rhs, axis=0)
-
-        # Take real part
-        rhs_inv = np.real(rhs_inv).astype(obj.precision_real)
+    # with SharedMemoryManager() as smm:
+    #
+    #     # Create shared memory for Green's function
+    #     sm_greens_func = smm.SharedMemory(size=obj.num_bytes_greens_func())
+    #     green_func = ndarray(
+    #         shape=(obj.nz, obj.nz, 2 * obj.n - 1),
+    #         dtype=obj.precision,
+    #         buffer=sm_greens_func.buf
+    #     )
+    #
+    #     # Create shared memory for source
+    #     sm_source = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
+    #     source = ndarray(
+    #         shape=(obj.num_sources, obj.nz, obj.n),
+    #         dtype=obj.precision,
+    #         buffer=sm_source.buf
+    #     )
+    #
+    #     # Create shared memory for wavefield
+    #     sm_wavefield = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
+    #     wavefield = ndarray(
+    #         shape=(obj.num_sources, obj.nz, obj.n),
+    #         dtype=obj.precision,
+    #         buffer=sm_wavefield.buf
+    #     )
+    #
+    #     # Create shared memory for initial perturbation and load it
+    #     sm_pert = smm.SharedMemory(size=obj.num_bytes_model_pert())
+    #     pert = ndarray(shape=(obj.nz, obj.n), dtype=obj.precision_real, buffer=sm_pert.buf)
+    #     pert *= 0
+    #     model_pert_filename = obj.model_pert_filename(iter_count=iter_count - 1)
+    #     with np.load(model_pert_filename) as f:
+    #         pert += f["arr_0"]
+    #
+    #     # Create shared memory for rhs computation
+    #     sm_rhs = smm.SharedMemory(size=obj.num_bytes_true_data_per_k())
+    #     rhs = ndarray(
+    #         shape=(obj.num_sources, obj.nz, obj.n),
+    #         dtype=obj.precision,
+    #         buffer=sm_rhs.buf
+    #     )
+    #
+    #     # ------------------------------------------------------
+    #     # Compute rhs
+    #
+    #     print("\n\n---------------------------------------------")
+    #     print("---------------------------------------------")
+    #     print("Computing rhs for inversion...")
+    #
+    #     rhs_inv = np.zeros(shape=(obj.nz, obj.n), dtype=obj.precision)
+    #
+    #     # Loop over k values
+    #     for k in range(obj.num_k_values):
+    #
+    #         print("\n---------------------------------------------")
+    #         print("Starting k number ", k)
+    #
+    #         # Load Green's func into shared memory
+    #         green_func *= 0
+    #         green_func_filename = obj.greens_func_filename(num_k=k)
+    #         with np.load(green_func_filename) as f:
+    #             green_func += f["arr_0"]
+    #
+    #         # Load source into shared memory
+    #         source *= 0
+    #         source_filename = obj.source_filename(num_k=k)
+    #         with np.load(source_filename) as f:
+    #             source += f["arr_0"]
+    #
+    #         # Load initial wavefield into shared memory
+    #         wavefield *= 0
+    #         # TODO: change
+    #         # wavefield_filename = obj.wavefield_filename(num_k=k, iter_count=iter_count)
+    #         wavefield_filename = obj.true_data_filename(num_k=k)
+    #         with np.load(wavefield_filename) as f:
+    #             wavefield += f["arr_0"]
+    #
+    #         param_tuple_list = [
+    #             (
+    #                 obj.n,
+    #                 obj.nz,
+    #                 obj.a,
+    #                 obj.b,
+    #                 obj.k_values[k],
+    #                 obj.vz,
+    #                 obj.m,
+    #                 obj.sigma_greens_func,
+    #                 obj.precision,
+    #                 obj.precision_real,
+    #                 obj.greens_func_filedir(num_k=k),
+    #                 obj.num_sources,
+    #                 i,
+    #                 sm_greens_func.name,
+    #                 sm_source.name,
+    #                 sm_wavefield.name,
+    #                 sm_pert.name,
+    #                 sm_rhs.name
+    #             ) for i in range(obj.num_sources)
+    #         ]
+    #
+    #         with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+    #             max_ = len(param_tuple_list)
+    #
+    #             with tqdm(total=max_) as pbar:
+    #                 for _ in pool.imap_unordered(compute_rhs_for_pert_update, param_tuple_list):
+    #                     pbar.update()
+    #
+    #         # Sum the result
+    #         rhs_inv += np.sum(rhs, axis=0)
+    #
+    #     # Take real part
+    #     rhs_inv = np.real(rhs_inv).astype(obj.precision_real)
 
     # ------------------------------------------------------
     # Perform inversion
@@ -843,6 +843,9 @@ def perform_inversion_update_pert(
 
             for k_ in range(obj.num_k_values):
 
+                if k_ not in range(14, 17):
+                    continue
+
                 print("\n---------------------------------------------")
                 print("Starting k number ", k_)
 
@@ -853,8 +856,8 @@ def perform_inversion_update_pert(
 
                 # Load initial wavefield into shared memory
                 # TODO: change
-                # wavefield_filename_ = obj.wavefield_filename(num_k=k, iter_count=iter_count)
-                wavefield_filename_ = obj.true_data_filename(num_k=k)
+                # wavefield_filename_ = obj.wavefield_filename(num_k=k_, iter_count=iter_count)
+                wavefield_filename_ = obj.true_data_filename(num_k=k_)
                 with np.load(wavefield_filename_) as f_:
                     zero_and_add(wavefield, f_["arr_0"])
 
@@ -903,17 +906,17 @@ def perform_inversion_update_pert(
             dtype=obj.precision
         )
 
-        # a1 = np.random.randn(obj.nz * obj.n,).astype(obj.precision_real)
-        # a2 = np.random.randn(obj.nz * obj.n,).astype(obj.precision_real)
-        # b1 = func_linop(v=a1)
-        # b2 = func_linop(v=a2)
-        #
-        # dp1 = np.dot(a2, b1)
-        # dp2 = np.dot(b2, a1)
-        #
-        # print("dp1 = ", dp1, "dp2 = ", dp2)
-        #
-        # exit(1)
+        a1 = np.random.randn(obj.nz * obj.n,).astype(obj.precision_real)
+        a2 = np.random.randn(obj.nz * obj.n,).astype(obj.precision_real)
+        b1 = func_linop(v=a1)
+        b2 = func_linop(v=a2)
+
+        dp1 = np.dot(a2, b1)
+        dp2 = np.dot(b2, a1)
+
+        print("dp1 = ", dp1, "dp2 = ", dp2)
+
+        exit(1)
 
         print("\n\n---------------------------------------------")
         print("---------------------------------------------")

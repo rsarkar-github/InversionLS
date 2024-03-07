@@ -72,13 +72,15 @@ if __name__ == "__main__":
     print(np.linalg.norm(obj2 - temp))
     print(np.sum(temp), np.sum(obj1), np.sum(obj2))
 
-    # obj2_fname = inv_obj.obj2_filename(iter_count=0, iter_step=1)
-    # with np.load(obj2_fname) as f:
-    #     obj2 = f["arr_0"]
-    #
-    # plt.imshow(obj2, cmap="jet")
-    # plt.title("PDE residual")
-    # plt.xlabel("Num source")
-    # plt.ylabel("Num k")
-    # plt.colorbar()
-    # plt.show()
+    obj2_fname = inv_obj.obj2_filename(iter_count=0, iter_step=1)
+    with np.load(obj2_fname) as f:
+        obj2 = f["arr_0"]
+
+    plt.imshow(obj2, cmap="jet", vmin=0, vmax=scale)
+    plt.title("PDE residual")
+    plt.xlabel("Num source")
+    plt.ylabel("Num k")
+    plt.colorbar()
+    plt.show()
+
+    print(np.sum(obj2))
