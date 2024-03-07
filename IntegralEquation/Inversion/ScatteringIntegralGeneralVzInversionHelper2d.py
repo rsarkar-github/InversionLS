@@ -853,8 +853,8 @@ def perform_inversion_update_pert(
 
                 # Load initial wavefield into shared memory
                 # TODO: change
-                # wavefield_filename_ = obj.wavefield_filename(num_k=k_, iter_count=iter_count)
-                wavefield_filename_ = obj.true_data_filename(num_k=k_)
+                wavefield_filename_ = obj.wavefield_filename(num_k=k_, iter_count=iter_count)
+                # wavefield_filename_ = obj.true_data_filename(num_k=k_)
                 with np.load(wavefield_filename_) as f_:
                     zero_and_add(wavefield, f_["arr_0"])
 
