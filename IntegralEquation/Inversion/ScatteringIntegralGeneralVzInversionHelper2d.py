@@ -659,8 +659,7 @@ def update_wavefield(params):
         rhs_scale_ = 1.0
     rhs_ = rhs_ / rhs_scale_
 
-    del temp_
-    del temp1_
+    del temp_, temp1_
 
     # ------------------------------------------------------
     # Solve for solution
@@ -825,7 +824,7 @@ def update_wavefield_cg(params):
 
         return u + v1
 
-    linop_lse = LinearOperator(
+    linop_normal_op = LinearOperator(
         shape=(nz_ * n_, nz_ * n_),
         matvec=func_normal_op,
         dtype=precision_
@@ -859,7 +858,7 @@ def update_wavefield_cg(params):
     counter = gmres_counter()
     start_t_ = time.time()
     sol_, exit_code_ = cg(
-            linop_lse,
+            linop_normal_op,
             rhs_,
             atol=0,
             tol=btol_,
