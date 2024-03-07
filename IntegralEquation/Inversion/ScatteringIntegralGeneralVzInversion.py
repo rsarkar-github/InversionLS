@@ -830,8 +830,8 @@ class ScatteringIntegralGeneralVzInversion2d:
                 pert += f["arr_0"]
 
             # Loop over k values
-            # for k in range(self._num_k_values):
-            for k in range(15, 16):
+            for k in range(self._num_k_values):
+            # for k in range(15, 16):
                 print("\n\n---------------------------------------------")
                 print("---------------------------------------------")
                 print("Starting k number ", k)
