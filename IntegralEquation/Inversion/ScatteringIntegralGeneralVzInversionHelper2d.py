@@ -756,6 +756,7 @@ def perform_inversion_update_pert(
 
             # Load initial wavefield into shared memory
             wavefield *= 0
+            # TODO: change
             # wavefield_filename = obj.wavefield_filename(num_k=k, iter_count=iter_count)
             wavefield_filename = obj.true_data_filename(num_k=k)
             with np.load(wavefield_filename) as f:
@@ -842,9 +843,6 @@ def perform_inversion_update_pert(
 
             for k_ in range(obj.num_k_values):
 
-                if k in range(13,18):
-                    continue
-
                 print("\n---------------------------------------------")
                 print("Starting k number ", k_)
 
@@ -854,7 +852,9 @@ def perform_inversion_update_pert(
                     zero_and_add(green_func, f_["arr_0"])
 
                 # Load initial wavefield into shared memory
-                wavefield_filename_ = obj.wavefield_filename(num_k=k_, iter_count=iter_count)
+                # TODO: change
+                # wavefield_filename_ = obj.wavefield_filename(num_k=k, iter_count=iter_count)
+                wavefield_filename_ = obj.true_data_filename(num_k=k)
                 with np.load(wavefield_filename_) as f_:
                     zero_and_add(wavefield, f_["arr_0"])
 
@@ -924,15 +924,13 @@ def perform_inversion_update_pert(
             rhs_inv_scale = 1.0
         rhs_inv = rhs_inv / rhs_inv_scale
 
-        counter = gmres_counter()
         start_t = time.time()
         sol, exit_code = cg(
             linop_lse,
             np.reshape(rhs_inv, newshape=(obj.nz * obj.n, )),
             atol=0,
             tol=tol,
-            maxiter=max_iter,
-            callback=counter
+            maxiter=max_iter
         )
         sol *= rhs_inv_scale
         end_t = time.time()
@@ -942,7 +940,7 @@ def perform_inversion_update_pert(
             ", exit code = ", exit_code
         )
 
-    return np.reshape(sol.astype(obj.precision_real), newshape=(obj.nz, obj.n))
+    return np.reshape(sol.astype(obj.precision_real), newshape=(obj.nz, obj.n)) + pert
 
 
 def compute_rhs_for_pert_update(params):
