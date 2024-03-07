@@ -22,6 +22,6 @@ if __name__ == "__main__":
         iter_count=0,
         max_iter=20,
         tol=1e-5,
-        num_procs=16,
+        num_procs=40,
         clean=False
     )
