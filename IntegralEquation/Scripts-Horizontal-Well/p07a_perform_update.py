@@ -2,6 +2,7 @@ import os
 import numpy as np
 from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
 import matplotlib.pyplot as plt
+import multiprocessing as mp
 
 
 if __name__ == "__main__":
@@ -33,6 +34,8 @@ if __name__ == "__main__":
 
     lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
     mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
+
+    num_procs = min(obj.num_sources, mp.cpu_count(), 100)
 
     obj.perform_inversion_update_wavefield(
         iter_count=0,
