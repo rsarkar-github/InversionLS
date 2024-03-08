@@ -14,7 +14,7 @@ from multiprocessing.shared_memory import SharedMemory
 from multiprocessing.managers import SharedMemoryManager
 from ..Solver.HelmholtzOperators import create_helmholtz2d_matrix_radial
 from ..Solver.HelmholtzOperators import create_helmholtz2d_matrix_even
-from ...Utilities import TypeChecker, FourierTools
+from ..Utilities import TypeChecker, FourierTools
 import matplotlib.pyplot as plt
 
 
@@ -369,8 +369,7 @@ def func_read3D(params):
 
 class TruncatedKernelGeneralVz3d:
 
-    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False,
-                 verbose=False, light_mode=False):
+    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False, light_mode=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5]^2.
 
@@ -450,8 +449,7 @@ class TruncatedKernelGeneralVz3d:
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True,
-                       no_mpi=False, verbose=False):
+    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True, no_mpi=False, verbose=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5]^2.
 
@@ -472,6 +470,8 @@ class TruncatedKernelGeneralVz3d:
         :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         """
+
+        print("\n\nInitializing the class")
 
         TypeChecker.check(x=n, expected_type=(int,))
         if n % 2 != 1 or n < 3:
@@ -1196,8 +1196,7 @@ class TruncatedKernelGeneralVz3d:
 
 class TruncatedKernelGeneralVz2d:
 
-    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False,
-                 verbose=False, light_mode=False):
+    def __init__(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, no_mpi=False, verbose=False, light_mode=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5].
 
@@ -1249,8 +1248,6 @@ class TruncatedKernelGeneralVz2d:
                 raise TypeError("Only precision types numpy.complex64 or numpy.complex128 are supported")
 
             TypeChecker.check(x=green_func_dir, expected_type=(str,))
-            print(green_func_dir)
-            return
             if not os.path.exists(green_func_dir):
                 os.makedirs(green_func_dir)
 
@@ -1278,8 +1275,7 @@ class TruncatedKernelGeneralVz2d:
             # Run class initializer
             self.__initialize_class()
 
-    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True,
-                       no_mpi=False, verbose=False):
+    def set_parameters(self, n, nz, a, b, k, vz, m, sigma, precision, green_func_dir, num_threads, green_func_set=True, no_mpi=False, verbose=False):
         """
         The Helmholtz equation reads (lap + k^2 / vz^2)u = f, on the domain [a,b] x [-0.5, 0.5].
 
@@ -1300,6 +1296,8 @@ class TruncatedKernelGeneralVz2d:
         :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         """
+
+        print("\n\nInitializing the class")
 
         TypeChecker.check(x=n, expected_type=(int,))
         if n % 2 != 1 or n < 3:
@@ -1775,6 +1773,7 @@ class TruncatedKernelGeneralVz2d:
     def __create_sources_for_helmholtz(sources, z1, x1, num_slices, start_index_z, dz, m, sigma):
 
         for num_slice in numba.prange(num_slices):
+
             print("Computing source number ", num_slice)
 
             gaussian_center_z = (start_index_z + num_slice * m) * dz
