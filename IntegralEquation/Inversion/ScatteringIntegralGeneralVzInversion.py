@@ -382,7 +382,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 self._m,
                 self._sigma_greens_func,
                 self._precision,
-                self.greens_func_filedir(num_k=i)
+                self.__greens_func_filedir(num_k=i)
             ) for i in range(self._num_k_values)
         ]
 
@@ -488,7 +488,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                         self._m,
                         self._sigma_greens_func,
                         self._precision,
-                        self.greens_func_filedir(num_k=k),
+                        self.__greens_func_filedir(num_k=k),
                         sm.name,
                         sm1.name,
                         i,
@@ -655,7 +655,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                         self._sigma_greens_func,
                         self._precision,
                         self._precision_real,
-                        self.greens_func_filedir(num_k=k),
+                        self.__greens_func_filedir(num_k=k),
                         self._num_sources,
                         sm1.name,
                         sm2.name,
@@ -871,7 +871,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                         self._sigma_greens_func,
                         self._precision,
                         self._precision_real,
-                        self.greens_func_filedir(num_k=k),
+                        self.__greens_func_filedir(num_k=k),
                         self._num_sources,
                         rec_locs,
                         i,
@@ -1483,7 +1483,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                         self._sigma_greens_func,
                         self._precision,
                         self._precision_real,
-                        self.greens_func_filedir(num_k=k),
+                        self.__greens_func_filedir(num_k=k),
                         self._num_k_values,
                         self._num_sources,
                         sm.name,
