@@ -10,7 +10,7 @@ if __name__ == "__main__":
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
-        restart_code=None
+        restart_code=3
     )
     scale_fac_inv = obj.scale_fac_inv
 
