@@ -44,8 +44,8 @@ if __name__ == "__main__":
     psi = (1.0 / (vp_vz ** 2.0)) - (1.0 / (vp_compact ** 2.0))
     psi = psi.astype(obj.precision_real)
 
-    lower_bound = -np.abs(psi)
-    upper_bound = np.abs(psi)
+    lower_bound = -2.0 * np.abs(psi)
+    upper_bound = 2.0 * np.abs(psi)
 
     xmax = 1.0
     zmax = (obj.b - obj.a)
