@@ -1249,10 +1249,10 @@ class TruncatedKernelGeneralVz2d:
                 raise TypeError("Only precision types numpy.complex64 or numpy.complex128 are supported")
 
             TypeChecker.check(x=green_func_dir, expected_type=(str,))
-            print("Green func dir = ", green_func_dir)
+            print(green_func_dir)
+            return
             if not os.path.exists(green_func_dir):
                 os.makedirs(green_func_dir)
-            return
 
             TypeChecker.check_int_positive(x=num_threads)
             TypeChecker.check(x=no_mpi, expected_type=(bool,))

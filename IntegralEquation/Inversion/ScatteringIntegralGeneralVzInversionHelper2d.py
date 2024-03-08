@@ -24,8 +24,6 @@ def green_func_calculate_mp_helper_func(params):
     precision_ = params[8]
     green_func_dir_ = str(params[9])
 
-    print(green_func_dir_)
-
     TruncatedKernelGeneralVz2d(
         n=n_,
         nz=nz_,
