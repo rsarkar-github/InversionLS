@@ -15,7 +15,6 @@ from multiprocessing.managers import SharedMemoryManager
 from ..Solver.HelmholtzOperators import create_helmholtz2d_matrix_radial
 from ..Solver.HelmholtzOperators import create_helmholtz2d_matrix_even
 from ...Utilities import TypeChecker, FourierTools
-import matplotlib.pyplot as plt
 
 
 def func_helper2D(params):
@@ -137,7 +136,7 @@ def func_helper2D_no_mpi(
         Index for starting extraction in z direction
     :param end_index_z: (int)
         Index for ending extraction in z direction
-    :params m: (int)
+    :param m: (int)
         self._m (decimation factor)
     :param cutoff_func: (np.ndarray)
         self._cutoff_func_coarse_grid (cutoff function)
@@ -397,8 +396,6 @@ class TruncatedKernelGeneralVz3d:
 
         if not light_mode:
 
-            print("\n\nInitializing the class")
-
             TypeChecker.check(x=n, expected_type=(int,))
             if n % 2 != 1 or n < 3:
                 raise ValueError("n must be an odd integer >= 3")
@@ -470,8 +467,6 @@ class TruncatedKernelGeneralVz3d:
         :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         """
-
-        print("\n\nInitializing the class")
 
         TypeChecker.check(x=n, expected_type=(int,))
         if n % 2 != 1 or n < 3:
@@ -745,7 +740,7 @@ class TruncatedKernelGeneralVz3d:
         if not self._initialized_flag:
             raise ValueError("Class initialized in light mode, cannot perform operation.")
 
-        return (self._nz, self._nz, self._num_bins_non_neg, self._num_bins_non_neg)
+        return self._nz, self._nz, self._num_bins_non_neg, self._num_bins_non_neg
 
     @property
     def n(self):
@@ -1224,8 +1219,6 @@ class TruncatedKernelGeneralVz2d:
 
         if not light_mode:
 
-            print("\n\nInitializing the class")
-
             TypeChecker.check(x=n, expected_type=(int,))
             if n % 2 != 1 or n < 3:
                 raise ValueError("n must be an odd integer >= 3")
@@ -1296,8 +1289,6 @@ class TruncatedKernelGeneralVz2d:
         :param no_mpi: bool (if False do not use multiprocessing)
         :param verbose: bool (if True print messages during Green's function calculation).
         """
-
-        print("\n\nInitializing the class")
 
         TypeChecker.check(x=n, expected_type=(int,))
         if n % 2 != 1 or n < 3:
@@ -1506,7 +1497,7 @@ class TruncatedKernelGeneralVz2d:
         if not self._initialized_flag:
             raise ValueError("Class initialized in light mode, cannot perform operation.")
 
-        return (self._nz, self._nz, self._num_bins_non_neg)
+        return self._nz, self._nz, self._num_bins_non_neg
 
     @property
     def n(self):
@@ -1928,80 +1919,3 @@ class TruncatedKernelGeneralVz2d:
         self._mu = np.zeros(shape=(self._nz, 1), dtype=np.float32) + 1.0
         self._mu[0, 0] = 0.5
         self._mu[self._nz - 1, 0] = 0.5
-
-
-if __name__ == "__main__":
-
-    # ----------------------------------------------
-    # 2d Test
-
-    n_ = 101
-    nz_ = 101
-    a_ = 0.
-    b_ = a_ + (1.0 / (n_ - 1)) * (nz_ - 1)
-    freq_ = 10.0
-    omega_ = 2 * np.pi * freq_
-    m_ = 5
-    sigma_ = 0.004
-    precision_ = np.complex64
-    green_func_dir_ = "Lippmann-Schwinger/Test/Data"
-    num_threads_ = 4
-    vz_ = np.zeros(shape=(nz_, 1), dtype=np.float32) + 1.0
-
-    op = TruncatedKernelGeneralVz2d(
-        n=n_,
-        nz=nz_,
-        a=a_,
-        b=b_,
-        k=omega_,
-        vz=vz_,
-        m=m_,
-        sigma=sigma_,
-        precision=precision_,
-        green_func_dir=green_func_dir_,
-        num_threads=num_threads_,
-        verbose=False,
-        light_mode=False
-    )
-
-    op = TruncatedKernelGeneralVz2d(
-        n=n_,
-        nz=nz_,
-        a=a_,
-        b=b_,
-        k=omega_,
-        vz=vz_,
-        m=m_,
-        sigma=sigma_,
-        precision=precision_,
-        green_func_dir=green_func_dir_,
-        num_threads=num_threads_,
-        verbose=False,
-        light_mode=True
-    )
-    op.set_parameters(
-        n=n_,
-        nz=nz_,
-        a=a_,
-        b=b_,
-        k=omega_,
-        vz=vz_,
-        m=m_,
-        sigma=sigma_,
-        precision=precision_,
-        green_func_dir=green_func_dir_,
-        num_threads=num_threads_,
-        verbose=False
-    )
-
-    u_ = np.zeros(shape=(nz_, n_), dtype=precision_)
-    u_[int(nz_ / 2), int(n_ / 2)] = 1.0
-    output_ = u_ * 0
-
-    t1 = time.time()
-    op.apply_kernel(u=u_, output=output_)
-    t2 = time.time()
-    print("Operator application time = ", "{:6.2f}".format(t2 - t1), " s")
-
-    plt.imshow(np.imag(output_), cmap="Greys")
-    plt.show()
