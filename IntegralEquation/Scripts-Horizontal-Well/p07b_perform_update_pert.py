@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     obj.perform_inversion_update_model_pert(
         iter_count=0,
-        max_iter=200,
+        max_iter=20,
         tol=1e-5,
         num_procs=40,
         clean=False
