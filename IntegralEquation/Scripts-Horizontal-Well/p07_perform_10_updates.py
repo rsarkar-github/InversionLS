@@ -26,6 +26,10 @@ if __name__ == "__main__":
 
     for i in range(10):
 
+        print("\n\n---------------------------------------------------------")
+        print("---------------------------------------------------------")
+        print("Iteration ", i, ", updating wavefields...")
+
         # Update wave field
         obj.perform_inversion_update_wavefield(
             iter_count=i,
@@ -38,6 +42,10 @@ if __name__ == "__main__":
             num_procs=num_procs,
             clean=True
         )
+
+        print("\n\n---------------------------------------------------------")
+        print("---------------------------------------------------------")
+        print("Iteration ", i, ", updating perturbation...")
 
         # Update pert
         obj.perform_inversion_update_model_pert(
