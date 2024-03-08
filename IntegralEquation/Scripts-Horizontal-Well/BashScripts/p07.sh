@@ -5,4 +5,4 @@ source .bashrc
 conda activate py39
 cd /home/rsarkar/Research/Thesis
 
-python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p07b_perform_update_pert
+python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p07_perform_10_updates
