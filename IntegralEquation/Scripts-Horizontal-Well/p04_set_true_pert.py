@@ -54,4 +54,4 @@ if __name__ == "__main__":
     plot(lower_bound, extent, "Lower bound", 10)
     plot(upper_bound, extent, "Upper bound", 10)
 
-    # obj.add_true_model_pert_bounds(model_pert=psi, lower_bound=lower_bound, upper_bound=upper_bound)
+    obj.add_true_model_pert_bounds(model_pert=psi, lower_bound=lower_bound, upper_bound=upper_bound)
