@@ -1251,6 +1251,8 @@ class TruncatedKernelGeneralVz2d:
             TypeChecker.check(x=green_func_dir, expected_type=(str,))
             if not os.path.exists(green_func_dir):
                 os.makedirs(green_func_dir)
+                print("aa", os.path.exists(green_func_dir))
+                return
 
             TypeChecker.check_int_positive(x=num_threads)
             TypeChecker.check(x=no_mpi, expected_type=(bool,))
@@ -1459,7 +1461,6 @@ class TruncatedKernelGeneralVz2d:
                 TypeChecker.check(x=green_func_dir, expected_type=(str,))
                 if not os.path.exists(green_func_dir):
                     os.makedirs(green_func_dir)
-                    print("Here,", os.path.exists(green_func_dir))
                 file_dir = green_func_dir
 
             np.savez(os.path.join(file_dir, "green_func.npz"), self._green_func)
