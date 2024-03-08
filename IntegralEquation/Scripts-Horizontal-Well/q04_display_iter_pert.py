@@ -11,8 +11,8 @@ def plot1(vel, extent, title, aspect_ratio=1, aspect_cbar=10, file_name=None, vm
     if vmax is None:
         vmax = np.max(vel)
 
-    fig = plt.figure(figsize=(6, 3))  # define figure size
-    image = plt.imshow(vel, cmap="jet", interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
+    plt.figure(figsize=(6, 3))  # define figure size
+    plt.imshow(vel, cmap="jet", interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
 
     cbar = plt.colorbar(aspect=aspect_cbar, pad=0.02)
     cbar.set_label('Vp [km/s]', labelpad=10)
@@ -91,5 +91,15 @@ if __name__ == "__main__":
 
     plot1(
         vel=vp_true - vp_vz, extent=extent, title="Vp true - Vz",
+        aspect_ratio=10, aspect_cbar=10, file_name=None
+    )
+
+    plot1(
+        vel=pert, extent=extent, title="Inverted pert",
+        aspect_ratio=10, aspect_cbar=10, file_name=None
+    )
+
+    plot1(
+        vel=pert_true, extent=extent, title="True pert",
         aspect_ratio=10, aspect_cbar=10, file_name=None
     )
