@@ -966,6 +966,7 @@ class ScatteringIntegralGeneralVzInversion2d:
     def perform_inversion_update_model_pert(
             self, iter_count=None,
             max_iter=100, tol=1e-5, mnorm=0.0,
+            use_bounds=True,
             num_procs=1, clean=False
     ):
         """
@@ -979,6 +980,8 @@ class ScatteringIntegralGeneralVzInversion2d:
             tol for CG
         :param mnorm: float
             Weight to penalize update to pert
+        :param use_bounds: bool
+            Whether to use lower and upper bounds to clip the update
         :param num_procs: int
             Number of processors for multiprocessing while computing objective function
         :param clean: bool
@@ -1036,12 +1039,13 @@ class ScatteringIntegralGeneralVzInversion2d:
         # ------------------------------------------------------
         # Post processing perturbation
 
-        with np.load(self.__lower_bound_filename()) as f:
-            lower_bound = f["arr_0"]
-        with np.load(self.__upper_bound_filename()) as f:
-            upper_bound = f["arr_0"]
+        if use_bounds:
+            with np.load(self.__lower_bound_filename()) as f:
+                lower_bound = f["arr_0"]
+            with np.load(self.__upper_bound_filename()) as f:
+                upper_bound = f["arr_0"]
 
-        # updated_pert = np.clip(a=updated_pert, a_min=lower_bound, a_max=upper_bound)
+            updated_pert = np.clip(a=updated_pert, a_min=lower_bound, a_max=upper_bound)
 
         # Write computed perturbation to disk
         np.savez_compressed(self.__model_pert_filename(iter_count=iter_count), updated_pert)

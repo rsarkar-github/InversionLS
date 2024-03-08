@@ -54,6 +54,7 @@ if __name__ == "__main__":
             max_iter=40,
             tol=1e-5,
             mnorm=0.0,
+            use_bounds=False,
             num_procs=num_procs,
             clean=True
         )
