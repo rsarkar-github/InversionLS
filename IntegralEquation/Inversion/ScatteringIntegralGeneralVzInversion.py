@@ -1041,7 +1041,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         with np.load(self.__upper_bound_filename()) as f:
             upper_bound = f["arr_0"]
 
-        updated_pert = np.clip(a=updated_pert, a_min=lower_bound, a_max=upper_bound)
+        # updated_pert = np.clip(a=updated_pert, a_min=lower_bound, a_max=upper_bound)
 
         # Write computed perturbation to disk
         np.savez_compressed(self.__model_pert_filename(iter_count=iter_count), updated_pert)

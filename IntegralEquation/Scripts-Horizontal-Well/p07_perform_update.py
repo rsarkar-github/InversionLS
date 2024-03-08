@@ -23,12 +23,13 @@ if __name__ == "__main__":
     mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
 
     num_procs = min(obj.num_sources, mp.cpu_count(), 100)
+    start_iter_num = 0
 
     for i in range(1):
 
         print("\n\n---------------------------------------------------------")
         print("---------------------------------------------------------")
-        print("Iteration ", i, ", updating wavefields...")
+        print("Iteration ", start_iter_num + i, ", updating wavefields...")
 
         # Update wave field
         obj.perform_inversion_update_wavefield(
@@ -45,13 +46,14 @@ if __name__ == "__main__":
 
         print("\n\n---------------------------------------------------------")
         print("---------------------------------------------------------")
-        print("Iteration ", i, ", updating perturbation...")
+        print("Iteration ", start_iter_num + i, ", updating perturbation...")
 
         # Update pert
         obj.perform_inversion_update_model_pert(
             iter_count=i,
             max_iter=40,
             tol=1e-5,
+            mnorm=0.0,
             num_procs=num_procs,
             clean=True
         )
