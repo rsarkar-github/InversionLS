@@ -683,6 +683,13 @@ def perform_inversion_update_pert(
     """
 
     # ------------------------------------------------------
+    # Load lambda array
+
+    with np.load(obj.lambda_arr_filename(iter_count=iter_count)) as f:
+        lambda_arr = f["arr_0"]
+
+
+    # ------------------------------------------------------
     # Compute rhs
 
     with SharedMemoryManager() as smm:
@@ -775,6 +782,7 @@ def perform_inversion_update_pert(
                     obj.greens_func_filedir(num_k=k),
                     obj.num_sources,
                     i,
+                    lambda_arr[k, i],
                     sm_greens_func.name,
                     sm_source.name,
                     sm_wavefield.name,
@@ -868,6 +876,7 @@ def perform_inversion_update_pert(
                         obj.greens_func_filedir(num_k=k_),
                         obj.num_sources,
                         i,
+                        lambda_arr[k_, i],
                         v,
                         sm_greens_func.name,
                         sm_wavefield.name,
@@ -949,11 +958,12 @@ def compute_rhs_for_pert_update(params):
     green_func_dir_ = str(params[10])
     num_sources_ = int(params[11])
     num_source_ = int(params[12])
-    sm_green_func_name_ = str(params[13])
-    sm_source_name_ = str(params[14])
-    sm_wavefield_name_ = str(params[15])
-    sm_model_pert_name_ = str(params[16])
-    sm_rhs_name_ = str(params[17])
+    lambda_val = float(params[13])
+    sm_green_func_name_ = str(params[14])
+    sm_source_name_ = str(params[15])
+    sm_wavefield_name_ = str(params[16])
+    sm_model_pert_name_ = str(params[17])
+    sm_rhs_name_ = str(params[18])
 
     # ------------------------------------------------------
     # Create Lippmann-Schwinger operator
@@ -993,15 +1003,19 @@ def compute_rhs_for_pert_update(params):
     # ------------------------------------------------------
     # Compute rhs
 
-    source_[num_source_, :, :] += (k_ ** 2) * psi_ * wavefield_[num_source_, :, :]
-    op_.apply_kernel(u=source_[num_source_, :, :], output=rhs_[num_source_, :, :], adj=False, add=False)
-    rhs_[num_source_, :, :] *= (-1.0)
-    rhs_[num_source_, :, :] += wavefield_[num_source_, :, :]
+    if lambda_val == 0:
+        rhs_[num_source_, :, :] *= 0
 
-    temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
-    op_.apply_kernel(u=rhs_[num_source_, :, :], output=temp_, adj=True, add=False)
-    rhs_[num_source_, :, :] = temp_ * np.conjugate(wavefield_[num_source_, :, :])
-    rhs_[num_source_, :, :] *= (k_ ** 2)
+    else:
+        source_[num_source_, :, :] += (k_ ** 2) * psi_ * wavefield_[num_source_, :, :]
+        op_.apply_kernel(u=source_[num_source_, :, :], output=rhs_[num_source_, :, :], adj=False, add=False)
+        rhs_[num_source_, :, :] *= (-1.0)
+        rhs_[num_source_, :, :] += wavefield_[num_source_, :, :]
+
+        temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+        op_.apply_kernel(u=rhs_[num_source_, :, :], output=temp_, adj=True, add=False)
+        rhs_[num_source_, :, :] = temp_ * np.conjugate(wavefield_[num_source_, :, :])
+        rhs_[num_source_, :, :] *= (k_ ** 2) * (lambda_val ** 2)
 
     # ------------------------------------------------------
     # Release shared memory
@@ -1030,10 +1044,11 @@ def compute_matvec_for_pert_update(params):
     green_func_dir_ = str(params[9])
     num_sources_ = int(params[10])
     num_source_ = int(params[11])
-    v = params[12]
-    sm_green_func_name_ = str(params[13])
-    sm_wavefield_name_ = str(params[14])
-    sm_sumarr_name_ = str(params[15])
+    lambda_val = float(params[12])
+    v = params[13]
+    sm_green_func_name_ = str(params[14])
+    sm_wavefield_name_ = str(params[15])
+    sm_sumarr_name_ = str(params[16])
 
     # ------------------------------------------------------
     # Create Lippmann-Schwinger operator
@@ -1066,21 +1081,25 @@ def compute_matvec_for_pert_update(params):
 
     # ------------------------------------------------------
     # Compute the matvec product
-    temp_ = (k_ ** 4.0) * v * wavefield_[num_source_, :, :]
-    temp_ = temp_.astype(precision_)
-    op_.apply_kernel(
-        u=temp_,
-        output=sumarr_[num_source_, :, :],
-        adj=False,
-        add=False
-    )
-    op_.apply_kernel(
-        u=sumarr_[num_source_, :, :],
-        output=temp_,
-        adj=True,
-        add=False
-    )
-    sumarr_[num_source_, :, :] = temp_ * np.conjugate(wavefield_[num_source_, :, :])
+    if lambda_val == 0:
+        sumarr_[num_source_, :, :] *= 0
+
+    else:
+        temp_ = (k_ ** 4.0) * (lambda_val ** 2.0) * v * wavefield_[num_source_, :, :]
+        temp_ = temp_.astype(precision_)
+        op_.apply_kernel(
+            u=temp_,
+            output=sumarr_[num_source_, :, :],
+            adj=False,
+            add=False
+        )
+        op_.apply_kernel(
+            u=sumarr_[num_source_, :, :],
+            output=temp_,
+            adj=True,
+            add=False
+        )
+        sumarr_[num_source_, :, :] = temp_ * np.conjugate(wavefield_[num_source_, :, :])
 
     # ------------------------------------------------------
     # Release shared memory
