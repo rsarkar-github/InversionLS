@@ -1252,7 +1252,7 @@ class TruncatedKernelGeneralVz2d:
             print("Green func dir = ", green_func_dir)
             if not os.path.exists(green_func_dir):
                 os.makedirs(green_func_dir)
-                return
+            return
 
             TypeChecker.check_int_positive(x=num_threads)
             TypeChecker.check(x=no_mpi, expected_type=(bool,))
