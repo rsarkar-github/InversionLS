@@ -903,18 +903,6 @@ def perform_inversion_update_pert(
             dtype=obj.precision
         )
 
-        # a1 = np.random.randn(obj.nz * obj.n,).astype(obj.precision_real)
-        # a2 = np.random.randn(obj.nz * obj.n,).astype(obj.precision_real)
-        # b1 = func_linop(v=a1)
-        # b2 = func_linop(v=a2)
-        #
-        # dp1 = np.dot(a2, b1)
-        # dp2 = np.dot(b2, a1)
-        #
-        # print("dp1 = ", dp1, "dp2 = ", dp2)
-        #
-        # exit(1)
-
         print("\n\n---------------------------------------------")
         print("---------------------------------------------")
         print("Starting linear inversion...")
@@ -939,6 +927,10 @@ def perform_inversion_update_pert(
             "Total time for iteration: ", "{:4.2f}".format(end_t - start_t), " s",
             ", exit code = ", exit_code
         )
+
+        print("---------------------------------------------")
+        print("---------------------------------------------")
+        print("Finished linear inversion...\n")
 
     return np.reshape(sol.astype(obj.precision_real), newshape=(obj.nz, obj.n)) + pert
 
