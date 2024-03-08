@@ -53,7 +53,7 @@ if __name__ == "__main__":
             iter_count=i,
             max_iter=20,
             tol=1e-5,
-            mnorm=0.0,
+            mnorm=0.001,
             use_bounds=True,
             num_procs=num_procs,
             clean=True
