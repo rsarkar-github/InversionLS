@@ -742,9 +742,6 @@ def perform_inversion_update_pert(
             print("\n---------------------------------------------")
             print("Starting k number ", k)
 
-            if k != 15:
-                continue
-
             # Load Green's func into shared memory
             green_func *= 0
             green_func_filename = obj.greens_func_filename(num_k=k)
@@ -848,9 +845,6 @@ def perform_inversion_update_pert(
 
                 print("\n---------------------------------------------")
                 print("Starting k number ", k_)
-
-                if k_ != 15:
-                    continue
 
                 # Load Green's func into shared memory
                 green_func_filename_ = obj.greens_func_filename(num_k=k_)
