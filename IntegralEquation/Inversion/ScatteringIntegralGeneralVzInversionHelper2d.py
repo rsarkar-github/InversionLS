@@ -664,7 +664,7 @@ def update_wavefield_cg(params):
 
 def perform_inversion_update_pert(
         obj, iter_count,
-        max_iter=100, tol=1e-5, num_procs=1
+        max_iter=100, tol=1e-5, mnorm=0.0, num_procs=1
 ):
     """
     Perform inversion -- update wavefields.
@@ -678,6 +678,8 @@ def perform_inversion_update_pert(
         Maximum number of iterations allowed by lsqr / lsmr
     :param tol: float
         tol for CG
+    :param mnorm: float
+        Weight to penalize update to pert
     :param num_procs: int
         Number of processors for multiprocessing while computing objective function
     """
@@ -687,7 +689,6 @@ def perform_inversion_update_pert(
 
     with np.load(obj.lambda_arr_filename(iter_count=iter_count)) as f:
         lambda_arr = f["arr_0"]
-
 
     # ------------------------------------------------------
     # Compute rhs
@@ -845,7 +846,9 @@ def perform_inversion_update_pert(
             start_tt_ = time.time()
 
             v = np.reshape(v, newshape=(obj.nz, obj.n))
-            sum_accumulated = v * 0
+
+            # Add mnorm term to output
+            sum_accumulated = v * mnorm
 
             for k_ in range(obj.num_k_values):
 
