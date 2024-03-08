@@ -22,7 +22,7 @@ if __name__ == "__main__":
     num_procs = min(obj.num_sources, mp.cpu_count(), 100)
     obj.perform_inversion_update_model_pert(
         iter_count=0,
-        max_iter=20,
+        max_iter=40,
         tol=1e-5,
         num_procs=num_procs,
         clean=False
