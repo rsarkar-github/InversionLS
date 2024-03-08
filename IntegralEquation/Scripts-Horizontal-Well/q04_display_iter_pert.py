@@ -101,7 +101,7 @@ if __name__ == "__main__":
         aspect_ratio=10, aspect_cbar=10, file_name=None
     )
     plot1(
-        vel=pert, extent=extent, title="Inverted pert", vmin=-scale/5000, vmax=scale/5000,
+        vel=pert, extent=extent, title="Inverted pert", vmin=-scale/1000, vmax=scale/1000,
         aspect_ratio=10, aspect_cbar=10, file_name=None
     )
 
