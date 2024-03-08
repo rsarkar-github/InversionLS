@@ -1827,7 +1827,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                             x=model_pert,
                             shape=(self._nz, self._n),
                             dtypes=(self._precision_real,),
-                            nan_inf=False # TODO
+                            nan_inf=True
                         )
 
                         # Check wavefields
@@ -1840,7 +1840,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                                 x=wavefield_k,
                                 shape=(self._num_sources, self._nz, self._n),
                                 dtypes=(self._precision,),
-                                nan_inf=False # TODO
+                                nan_inf=True
                             )
 
                         print("Checking Iter" + str(iter_num) + " model pert and wavefields: OK")
