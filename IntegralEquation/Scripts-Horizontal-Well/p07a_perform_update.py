@@ -45,6 +45,6 @@ if __name__ == "__main__":
         solver="cg",
         atol=1e-5,
         btol=1e-5,
-        num_procs=40,
+        num_procs=num_procs,
         clean=True
     )
