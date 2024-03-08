@@ -386,6 +386,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             ) for i in range(self._num_k_values)
         ]
         [print(self.greens_func_filedir(num_k=i), "\n") for i in range(self._num_k_values)]
+        return
 
         with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
             max_ = len(param_tuple_list)
