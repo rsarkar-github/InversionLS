@@ -51,10 +51,10 @@ if __name__ == "__main__":
         # Update pert
         obj.perform_inversion_update_model_pert(
             iter_count=i,
-            max_iter=40,
+            max_iter=5,
             tol=1e-5,
             mnorm=0.0,
-            use_bounds=False,
+            use_bounds=True,
             num_procs=num_procs,
             clean=True
         )
