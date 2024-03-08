@@ -397,11 +397,16 @@ class ScatteringIntegralGeneralVzInversion2d:
         update_json(filename=self._param_file, key="state", val=self._state)
         self.__print_reset_state_msg()
 
-    def add_true_model_pert(self, model_pert):
+    def add_true_model_pert_bounds(self, model_pert, lower_bound, upper_bound):
         """
         Add true model perturbation
         :param model_pert: 2D numpy array of floats
             True model perturbation in slowness squared about background model. Must have shape (self._nz, self._n).
+        :param lower_bound: 2D numpy array of floats
+            Lower bound for updates in slowness squared about background model. Must have shape (self._nz, self._n).
+        :param upper_bound: 2D numpy array of floats
+            Upper bound for updates slowness squared about background model. Must have shape (self._nz, self._n).
+
         :return:
         """
         if self._state != 3:
@@ -417,11 +422,29 @@ class ScatteringIntegralGeneralVzInversion2d:
             dtypes=(self._precision_real,),
             nan_inf=True
         )
+        TypeChecker.check_ndarray(
+            x=lower_bound,
+            shape=(self._nz, self._n),
+            dtypes=(self._precision_real,),
+            nan_inf=True
+        )
+        TypeChecker.check_ndarray(
+            x=upper_bound,
+            shape=(self._nz, self._n),
+            dtypes=(self._precision_real,),
+            nan_inf=True
+        )
 
         # Write to file
         path = self.__true_model_pert_filename()
         np.savez_compressed(path, model_pert)
         self._true_model_pert = model_pert
+
+        path = self.__lower_bound_filename()
+        np.savez_compressed(path, lower_bound)
+
+        path = self.__upper_bound_filename()
+        np.savez_compressed(path, upper_bound)
 
         self._state += 1
         update_json(filename=self._param_file, key="state", val=self._state)
@@ -1158,6 +1181,32 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         return os.path.join(self._basedir, "data/true_model_pert.npz")
 
+    def lower_bound_filename(self):
+        """
+        :return: str
+            Lower bound filename
+        """
+        if self._state < 4:
+            print(
+                "\nOperation not allowed. Need self._state >= 4, but obtained self._state = ", self._state
+            )
+            return None
+
+        return os.path.join(self._basedir, "data/lower_bound_pert.npz")
+
+    def upper_bound_filename(self):
+        """
+        :return: str
+            Upper bound filename
+        """
+        if self._state < 4:
+            print(
+                "\nOperation not allowed. Need self._state >= 4, but obtained self._state = ", self._state
+            )
+            return None
+
+        return os.path.join(self._basedir, "data/upper_bound_pert.npz")
+
     def true_data_filename(self, num_k):
         """
         :param num_k: int
@@ -1536,6 +1585,12 @@ class ScatteringIntegralGeneralVzInversion2d:
     def __true_model_pert_filename(self):
         return os.path.join(self._basedir, "data/true_model_pert.npz")
 
+    def __lower_bound_filename(self):
+        return os.path.join(self._basedir, "data/lower_bound_pert.npz")
+
+    def __upper_bound_filename(self):
+        return os.path.join(self._basedir, "data/upper_bound_pert.npz")
+
     def __true_data_filename(self, num_k):
         return os.path.join(self._basedir, "data/" + str(num_k) + ".npz")
 
@@ -1756,7 +1811,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                             x=model_pert,
                             shape=(self._nz, self._n),
                             dtypes=(self._precision_real,),
-                            nan_inf=True
+                            nan_inf=False # TODO
                         )
 
                         # Check wavefields
@@ -1769,7 +1824,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                                 x=wavefield_k,
                                 shape=(self._num_sources, self._nz, self._n),
                                 dtypes=(self._precision,),
-                                nan_inf=True
+                                nan_inf=False # TODO
                             )
 
                         print("Checking Iter" + str(iter_num) + " model pert and wavefields: OK")

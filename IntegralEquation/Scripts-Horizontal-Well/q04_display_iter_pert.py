@@ -46,7 +46,7 @@ if __name__ == "__main__":
     aspect = float(sys.argv[2])
 
     # Get perturbation, true perturbation
-    pert_fname = obj.model_pert_filename(iter_count=0)
+    pert_fname = obj.model_pert_filename(iter_count=num_iter)
     with np.load(pert_fname) as f:
         pert = f["arr_0"]
 

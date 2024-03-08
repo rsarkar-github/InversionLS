@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     num_procs = min(obj.num_sources, mp.cpu_count(), 100)
 
-    for i in range(10):
+    for i in range(1):
 
         print("\n\n---------------------------------------------------------")
         print("---------------------------------------------------------")
