@@ -22,7 +22,7 @@ def green_func_calculate_mp_helper_func(params):
     m_ = int(params[6])
     sigma_ = float(params[7])
     precision_ = params[8]
-    green_func_dir_ = str(params[9])
+    green_func_dir_ = params[9]
 
     TruncatedKernelGeneralVz2d(
         n=n_,
