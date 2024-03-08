@@ -1016,6 +1016,11 @@ def compute_rhs_for_pert_update(params):
     rhs_[num_source_, :, :] *= (-1.0)
     rhs_[num_source_, :, :] += wavefield_[num_source_, :, :]
 
+    temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+    op_.apply_kernel(u=rhs_[num_source_, :, :], output=temp_, adj=True, add=False)
+    rhs_[num_source_, :, :] = temp_ * np.conjugate(wavefield_[num_source_, :, :])
+    rhs_[num_source_, :, :] *= (k_ ** 2)
+
     # ------------------------------------------------------
     # Release shared memory
 
