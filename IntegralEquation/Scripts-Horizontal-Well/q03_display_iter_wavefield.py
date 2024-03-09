@@ -25,7 +25,11 @@ if __name__ == "__main__":
     aspect = float(sys.argv[4])
 
     data = obj.get_inverted_wavefield(iter_count=num_iter, num_k=num_k_val, num_source=num_source)
-    data_true = obj.get_true_wavefield(num_k=num_k_val, num_source=num_source)
+
+    if num_iter >= 1:
+        data_true = obj.get_inverted_wavefield(iter_count=num_iter - 1, num_k=num_k_val, num_source=num_source)
+    else:
+        data_true = obj.get_true_wavefield(num_k=num_k_val, num_source=num_source)
     scale = np.max(np.abs(data_true))
 
     xmax = 1.0
@@ -42,7 +46,12 @@ if __name__ == "__main__":
     plt.ylabel(r'$z$ [km]')
     plt.show()
 
-    plt.imshow(np.real(data - data_true), cmap="Greys", extent=extent, aspect=aspect, vmin=-scale, vmax=scale)
+    # plt.imshow(np.real(data - data_true), cmap="Greys", extent=extent, aspect=aspect, vmin=-scale, vmax=scale)
+    # plt.xlabel(r'$x_1$ [km]')
+    # plt.ylabel(r'$z$ [km]')
+    # plt.show()
+
+    plt.imshow(np.real(data - data_true), cmap="Greys", extent=extent, aspect=aspect)
     plt.xlabel(r'$x_1$ [km]')
     plt.ylabel(r'$z$ [km]')
     plt.show()

@@ -452,7 +452,7 @@ def update_wavefield(params):
             rhs_,
             atol=atol_,
             btol=btol_,
-            show=True,
+            show=True, #TODO: change to False
             maxiter=max_iter_
         )[:5]
 

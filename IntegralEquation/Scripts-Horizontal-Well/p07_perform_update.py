@@ -71,7 +71,7 @@ if __name__ == "__main__":
         print("\n")
 
         lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
-        mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
+        mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 0.0
 
         print("\n\n---------------------------------------------------------")
         print("---------------------------------------------------------")
@@ -83,7 +83,7 @@ if __name__ == "__main__":
             lambda_arr=lambda_arr,
             mu_arr=mu_arr,
             max_iter=1000,
-            solver="lsmr",
+            solver="cg",
             atol=1e-5,
             btol=1e-5,
             num_procs=num_procs,
