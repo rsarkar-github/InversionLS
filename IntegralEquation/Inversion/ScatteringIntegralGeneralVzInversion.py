@@ -853,8 +853,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 pert += f["arr_0"]
 
             # Loop over k values
-            # for k in range(self._num_k_values):
-            for k in range(25, 26):
+            for k in range(self._num_k_values):
                 print("\n\n---------------------------------------------")
                 print("---------------------------------------------")
                 print("Starting k number ", k)
@@ -910,7 +909,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                         solver,
                         atol,
                         btol
-                    ) for i in range(50, 51) # for i in range(self._num_sources)
+                    ) for i in range(self._num_sources)
                 ]
 
                 if solver in ["lsqr", "lsmr"]:
