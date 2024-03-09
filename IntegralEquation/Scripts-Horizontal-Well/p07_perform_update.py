@@ -10,7 +10,7 @@ if __name__ == "__main__":
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
-        restart_code=6
+        restart_code=None
     )
 
     # Check arguments
