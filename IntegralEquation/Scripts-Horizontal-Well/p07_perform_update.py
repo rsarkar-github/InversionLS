@@ -70,8 +70,8 @@ if __name__ == "__main__":
         print("Perform update...")
         print("\n")
 
-        lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
-        mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 0.0
+        lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 0.0
+        mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
 
         print("\n\n---------------------------------------------------------")
         print("---------------------------------------------------------")
