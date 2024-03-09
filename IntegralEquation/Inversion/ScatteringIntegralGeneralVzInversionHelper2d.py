@@ -569,6 +569,7 @@ def update_wavefield_cg(params):
     # Compute rhs (scale to norm 1)
 
     num_recs_ = rec_locs_.shape[0]
+    psi_ *= 0
 
     def func_normal_op(v):
 
