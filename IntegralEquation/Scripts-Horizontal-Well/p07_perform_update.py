@@ -83,7 +83,7 @@ if __name__ == "__main__":
             lambda_arr=lambda_arr,
             mu_arr=mu_arr,
             max_iter=1000,
-            solver="cg",
+            solver="lsmr",
             atol=1e-5,
             btol=1e-5,
             num_procs=num_procs,
