@@ -87,7 +87,7 @@ if __name__ == "__main__":
             atol=1e-5,
             btol=1e-5,
             num_procs=num_procs,
-            clean=True
+            clean=False
         )
 
         # TODO: We are testing iteration 1 with no mnorm and no bounds
