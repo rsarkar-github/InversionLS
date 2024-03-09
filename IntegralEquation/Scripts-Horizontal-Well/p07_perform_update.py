@@ -55,8 +55,8 @@ if __name__ == "__main__":
         iter_count=num_iter,
         max_iter=20,
         tol=1e-5,
-        mnorm=0.001,
-        use_bounds=True,
+        mnorm=0.0,
+        use_bounds=False,
         num_procs=num_procs,
         clean=True
     )
