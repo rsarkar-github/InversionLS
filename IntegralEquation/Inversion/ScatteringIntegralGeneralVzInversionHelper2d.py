@@ -569,7 +569,6 @@ def update_wavefield_cg(params):
     # Compute rhs (scale to norm 1)
 
     num_recs_ = rec_locs_.shape[0]
-    psi_ *= 0
 
     def func_normal_op(v):
 
@@ -580,9 +579,8 @@ def update_wavefield_cg(params):
         u *= lambda_
 
         out = v * 0
-        out = np.reshape(out, newshape=(nz_, n_))
         op_.apply_kernel(u=u, output=out, adj=True, add=False)
-        out = u - (k_ ** 2) * u * psi_
+        out = u - (k_ ** 2) * out * psi_
         out *= lambda_
 
         u *= 0
