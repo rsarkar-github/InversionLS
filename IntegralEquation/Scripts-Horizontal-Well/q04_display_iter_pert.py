@@ -33,7 +33,9 @@ if __name__ == "__main__":
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
-        restart_code=None
+        restart_code=None,
+        check_iter_files=True,
+        num_procs_check_iter_files=16
     )
 
     print("Num k values = ", obj.num_k_values, ", Num sources = ", obj.num_sources)
@@ -91,6 +93,6 @@ if __name__ == "__main__":
         aspect_ratio=10, aspect_cbar=10, file_name=None
     )
     plot1(
-        vel=pert, extent=extent, title="Inverted pert", vmin=-scale, vmax=scale,
+        vel=pert, extent=extent, title="Inverted pert", vmin=-scale/10, vmax=scale/10,
         aspect_ratio=10, aspect_cbar=10, file_name=None
     )
