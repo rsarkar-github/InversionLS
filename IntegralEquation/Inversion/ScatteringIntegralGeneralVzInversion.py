@@ -1357,6 +1357,10 @@ class ScatteringIntegralGeneralVzInversion2d:
                     # Write computed wavefield to disk
                     np.savez_compressed(self.__wavefield_filename(iter_count=iter_count, num_k=k), wavefield)
 
+            if clean or self._state == 6 or iter_count >= self._last_iter_num:
+                self._state = 7
+                self._last_iter_num = iter_count
+                self._last_iter_step = 0
 
             # ------------------------------------------------------
             # ------------------------------------------------------
@@ -1412,21 +1416,14 @@ class ScatteringIntegralGeneralVzInversion2d:
         # ------------------------------------------------------
         # Update parameter file
 
-        # TODO: If else part runs but inner if doesn't, then the process flow breaks,
+        # TODO: If if doesn't run, then the process flow breaks,
         #  but provided here so that user can rerun individual iterations
 
-        if clean or self._state == 6:
+        if clean or self._state == 6 or iter_count >= self._last_iter_num:
             self._last_iter_num = iter_count
             self._last_iter_step = 1
             update_json(filename=self._param_file, key="last iter num", val=self._last_iter_num)
             update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
-
-        else:
-            if iter_count >= self._last_iter_num:
-                self._last_iter_num = iter_count
-                self._last_iter_step = 1
-                update_json(filename=self._param_file, key="last iter num", val=self._last_iter_num)
-                update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
 
         self._state = 7
         update_json(filename=self._param_file, key="state", val=self._state)
