@@ -7,10 +7,13 @@ import multiprocessing as mp
 if __name__ == "__main__":
 
     basedir = "InversionLS/Expt/horizontal-well/"
+    num_procs = min(mp.cpu_count(), 20)
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
-        restart_code=None
+        restart_code=None,
+        check_iter_files=True,
+        num_procs_check_iter_files=num_procs
     )
 
     # Check arguments
