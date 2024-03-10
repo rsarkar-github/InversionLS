@@ -17,7 +17,14 @@ from ...Utilities import TypeChecker
 
 class ScatteringIntegralGeneralVzInversion2d:
 
-    def __init__(self, basedir, restart=False, restart_code=None):
+    def __init__(
+            self,
+            basedir,
+            restart=False,
+            restart_code=None,
+            check_iter_files=True,
+            num_procs_check_iter_files=1
+    ):
         """
         Always read parameters from .json file.
         Name of parameter file is basedir + "params.json"
@@ -28,6 +35,10 @@ class ScatteringIntegralGeneralVzInversion2d:
             Whether to run the class initialization in restart mode or not
         :param restart_code: int or None
             If restart is True, then restart_code decides from where to restart
+        :param check_iter_files: bool
+            If check_iter_files is True, then perform the check, else skip
+        :param num_procs_check_iter_files: int
+            Number of processors to use in multiprocessing for parallel check of iteration files
         """
 
         TypeChecker.check(x=basedir, expected_type=(str,))
@@ -107,6 +118,10 @@ class ScatteringIntegralGeneralVzInversion2d:
         TypeChecker.check_float_positive(x=self._sigma_greens_func)
         TypeChecker.check_ndarray(x=self._vz, shape=(self._nz, 1), dtypes=(np.float32,), lb=0.1)
 
+        # Check iterations related group
+        TypeChecker.check(x=check_iter_files, expected_type=(bool,))
+        TypeChecker.check_int_lower_bound(x=num_procs_check_iter_files, lb=1)
+
         # Initialize state
         print("\n\n---------------------------------------------")
         print("---------------------------------------------")
@@ -133,7 +148,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         self._last_iter_num = None
         self._last_iter_step = None
 
-        self.__run_initializer()
+        self.__run_initializer(check_iter_files, num_procs_check_iter_files)
 
     @property
     def n(self):
@@ -728,9 +743,9 @@ class ScatteringIntegralGeneralVzInversion2d:
         :param atol: float
             atol for lsqr / lsmr
         :param btol: float
-            btol for lsqr / lsmr
+            btol for lsqr / lsmr, tol for CG
         :param num_procs: int
-            Number of processors for multiprocessing while computing objective function
+            Number of processors for multiprocessing
         :param clean: bool
             Clean all inversion results beyond requested step if True
         """
@@ -946,6 +961,9 @@ class ScatteringIntegralGeneralVzInversion2d:
         # ------------------------------------------------------
         # Update parameter file
 
+        # TODO: If else part runs but inner if doesn't, then the process flow breaks,
+        #  but provided here so that user can rerun individual iterations
+
         if clean or self._state == 6:
             self._last_iter_num = iter_count
             self._last_iter_step = 0
@@ -965,8 +983,7 @@ class ScatteringIntegralGeneralVzInversion2d:
 
     def perform_inversion_update_model_pert(
             self, iter_count=None,
-            max_iter=100, tol=1e-5, mnorm=0.0,
-            use_bounds=True,
+            max_iter=100, tol=1e-5, mnorm=0.0, use_bounds=True,
             num_procs=1, clean=False
     ):
         """
@@ -975,7 +992,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         :param iter_count: int
             Iteration number
         :param max_iter: int
-            Maximum number of iterations allowed by lsqr / lsmr
+            Maximum number of iterations allowed by CG
         :param tol: float
             tol for CG
         :param mnorm: float
@@ -983,7 +1000,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         :param use_bounds: bool
             Whether to use lower and upper bounds to clip the update
         :param num_procs: int
-            Number of processors for multiprocessing while computing objective function
+            Number of processors for multiprocessing
         :param clean: bool
             Clean all inversion results beyond requested step if True
         """
@@ -1006,6 +1023,8 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         TypeChecker.check_int_positive(x=max_iter)
         TypeChecker.check_float_bounds(x=tol, lb=1e-5, ub=1.0)
+        TypeChecker.check_float_lower_bound(x=mnorm, lb=0.0)
+        TypeChecker.check(x=use_bounds, expected_type=(bool,))
         TypeChecker.check_int_positive(x=num_procs)
         TypeChecker.check(x=clean, expected_type=(bool,))
 
@@ -1058,8 +1077,361 @@ class ScatteringIntegralGeneralVzInversion2d:
         # ------------------------------------------------------
         # Update parameter file
 
-        self._last_iter_step = 1
-        update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
+        # TODO: If below if statement doesn't run, then the process flow breaks,
+        #  but provided here so that user can rerun individual iterations
+
+        if clean or iter_count == self._last_iter_num:
+            self._last_iter_num = iter_count
+            self._last_iter_step = 1
+            update_json(filename=self._param_file, key="last iter num", val=self._last_iter_num)
+            update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
+
+
+    def perform_inversion_update_wavefield_model_pert(
+            self, iter_count=None, num_outer_iter=1,
+            lambda_arr=None, mu_arr=None,
+            max_iter=100, solver="cg", atol=1e-5, btol=1e-5,
+            max_iter1=100, tol=1e-5, mnorm=0.0, use_bounds=True,
+            num_procs=1, clean=False
+    ):
+        """
+        Perform inversion -- update wavefields
+
+        :param iter_count: int
+            Iteration number
+        :param num_outer_iter: int
+            Total number of outer iterations
+        :param lambda_arr: np.ndarray
+            Numpy array of lambda values
+        :param mu_arr: np.ndarray
+            Numpy array of mu values
+        :param max_iter: int
+            Maximum number of iterations allowed by lsqr / lsmr
+        :param solver: str
+            Solver name (lsqr or lsmr)
+        :param atol: float
+            atol for lsqr / lsmr
+        :param btol: float
+            btol for lsqr / lsmr
+        :param max_iter1: int
+            Maximum number of iterations allowed by CG for pert update
+        :param tol: float
+            tol for CG for pert update
+        :param mnorm: float
+            Weight to penalize update to pert
+        :param use_bounds: bool
+            Whether to use lower and upper bounds to clip the pert update
+        :param num_procs: int
+            Number of processors for multiprocessing
+        :param clean: bool
+            Clean all inversion results beyond requested step if True
+        """
+
+        # ------------------------------------------------------
+        # Check inputs
+
+        if self._state < 6:
+            print(
+                "\nOperation not allowed. Need self._state >= 6, but obtained self._state = ", self._state
+            )
+            return
+
+        if iter_count is not None:
+            TypeChecker.check_int_bounds(x=iter_count, lb=0, ub=self.__get_next_iter_num()[0])
+        else:
+            iter_count = self.__get_next_iter_num()[0]
+
+        TypeChecker.check_int_positive(x=num_outer_iter)
+        TypeChecker.check_int_positive(x=max_iter)
+        TypeChecker.check(x=solver, expected_type=(str,))
+        if solver not in ["lsqr", "lsmr", "cg"]:
+            print("solver type not supported. Only solvers available are lsqr, lsmr, and cg.")
+            return
+        TypeChecker.check_float_bounds(x=atol, lb=1e-5, ub=1.0)
+        TypeChecker.check_float_bounds(x=btol, lb=1e-5, ub=1.0)
+        TypeChecker.check_int_positive(x=max_iter1)
+        TypeChecker.check_float_bounds(x=tol, lb=1e-5, ub=1.0)
+        TypeChecker.check_float_lower_bound(x=mnorm, lb=0.0)
+        TypeChecker.check(x=use_bounds, expected_type=(bool,))
+        TypeChecker.check_int_positive(x=num_procs)
+        TypeChecker.check(x=clean, expected_type=(bool,))
+
+        if lambda_arr is not None:
+            TypeChecker.check_ndarray(
+                x=lambda_arr,
+                shape=(self._num_k_values, self._num_sources),
+                dtypes=(np.float32,),
+                nan_inf=True,
+                lb=0.0
+            )
+        else:
+            lambda_arr = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float32) + 1.0
+
+        if mu_arr is not None:
+            TypeChecker.check_ndarray(
+                x=mu_arr,
+                shape=(self._num_k_values, self._num_sources),
+                dtypes=(np.float32,),
+                nan_inf=True,
+                lb=0.0
+            )
+        else:
+            mu_arr = np.zeros(shape=(self._num_k_values, self._num_sources), dtype=np.float32) + 1.0
+
+        # ------------------------------------------------------
+        # Clean directories if clean is True
+        # Create directories if missing
+
+        if clean:
+
+            # Remove all future iteration directories including iter_count directory
+            list_not_remove = ["iter" + str(i) for i in range(iter_count)]
+            for item in os.listdir(os.path.join(self._basedir, "iterations/")):
+                path = os.path.join(self._basedir, "iterations/", item)
+                if os.path.isdir(path):
+                    if item not in list_not_remove:
+                        try:
+                            shutil.rmtree(path)
+                        except OSError as e:
+                            print("Error: %s - %s." % (e.filename, e.strerror))
+
+        path = os.path.join(self._basedir, "iterations/iter" + str(iter_count) + "/")
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+
+        # ------------------------------------------------------
+        # Write lambda_arr and mu_arr to disk
+
+        np.savez_compressed(self.__lambda_arr_filename(iter_count=iter_count), lambda_arr)
+        np.savez_compressed(self.__mu_arr_filename(iter_count=iter_count), mu_arr)
+
+
+        # ------------------------------------------------------
+        # Perform update
+
+        rec_locs = np.asarray(self._rec_locs, dtype=int)
+
+        for outer_iter_num in range(num_outer_iter):
+
+            print("\n\n\n\n---------------------------------------------")
+            print("---------------------------------------------")
+            print("---------------------------------------------")
+            print("Starting outer iteration number ", outer_iter_num)
+            print("---------------------------------------------")
+            print("---------------------------------------------")
+            print("---------------------------------------------")
+
+            # ------------------------------------------------------
+            # ------------------------------------------------------
+            # Perform update Step 1 (wavefield update)
+
+            print("\n\n---------------------------------------------")
+            print("Updating wave field, Iteration " + str(outer_iter_num) + "...\n")
+
+            with SharedMemoryManager() as smm:
+
+                # Create shared memory for Green's function
+                sm_greens_func = smm.SharedMemory(size=self.num_bytes_greens_func())
+                green_func = ndarray(
+                    shape=(self._nz, self._nz, 2 * self._n - 1),
+                    dtype=self._precision,
+                    buffer=sm_greens_func.buf
+                )
+
+                # Create shared memory for source
+                sm_source = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
+                source = ndarray(
+                    shape=(self._num_sources, self._nz, self._n),
+                    dtype=self._precision,
+                    buffer=sm_source.buf
+                )
+
+                # Create shared memory for wavefield
+                sm_wavefield = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
+                wavefield = ndarray(
+                    shape=(self._num_sources, self._nz, self._n),
+                    dtype=self._precision,
+                    buffer=sm_wavefield.buf
+                )
+
+                # Create shared memory for true data
+                sm_true_data = smm.SharedMemory(size=self.num_bytes_true_data_per_k())
+                true_data = ndarray(
+                    shape=(self._num_sources, self._nz, self._n),
+                    dtype=self._precision,
+                    buffer=sm_true_data.buf
+                )
+
+                # Create shared memory for initial perturbation and load it
+                sm_pert = smm.SharedMemory(size=self.num_bytes_model_pert())
+                pert = ndarray(shape=(self._nz, self._n), dtype=self._precision_real, buffer=sm_pert.buf)
+                pert *= 0
+                if outer_iter_num == 0:
+                    model_pert_filename = self.__model_pert_filename(iter_count=iter_count - 1)
+                else:
+                    model_pert_filename = self.__model_pert_filename(iter_count=iter_count)
+                with np.load(model_pert_filename) as f:
+                    pert += f["arr_0"]
+
+                # Loop over k values
+                for k in range(self._num_k_values):
+
+                    print("\n\n---------------------------------------------")
+                    print("---------------------------------------------")
+                    print("Starting k number ", k)
+
+                    # Load Green's func into shared memory
+                    green_func *= 0
+                    green_func_filename = self.__greens_func_filename(num_k=k)
+                    with np.load(green_func_filename) as f:
+                        green_func += f["arr_0"]
+
+                    # Load source into shared memory
+                    source *= 0
+                    source_filename = self.__source_filename(num_k=k)
+                    with np.load(source_filename) as f:
+                        source += f["arr_0"]
+
+                    # Load initial wavefield into shared memory
+                    wavefield *= 0
+                    if outer_iter_num == 0:
+                        wavefield_filename = self.__wavefield_filename(num_k=k, iter_count=iter_count - 1)
+                    else:
+                        wavefield_filename = self.__wavefield_filename(num_k=k, iter_count=iter_count)
+                    with np.load(wavefield_filename) as f:
+                        wavefield += f["arr_0"]
+
+                    # Load true data into shared memory
+                    true_data *= 0
+                    true_data_filename = self.__true_data_filename(num_k=k)
+                    with np.load(true_data_filename) as f:
+                        true_data += f["arr_0"]
+
+                    param_tuple_list = [
+                        (
+                            self._n,
+                            self._nz,
+                            self._a,
+                            self._b,
+                            self._k_values[k],
+                            self._vz,
+                            self._m,
+                            self._sigma_greens_func,
+                            self._precision,
+                            self._precision_real,
+                            self.__greens_func_filedir(num_k=k),
+                            self._num_sources,
+                            rec_locs,
+                            i,
+                            np.sqrt(lambda_arr[k, i]),
+                            np.sqrt(mu_arr[k, i]),
+                            sm_greens_func.name,
+                            sm_source.name,
+                            sm_wavefield.name,
+                            sm_true_data.name,
+                            sm_pert.name,
+                            max_iter,
+                            solver,
+                            atol,
+                            btol
+                        ) for i in range(self._num_sources)
+                    ]
+
+                    if solver in ["lsqr", "lsmr"]:
+                        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                            max_ = len(param_tuple_list)
+
+                            with tqdm(total=max_) as pbar:
+                                for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
+                                    pbar.update()
+
+                    if solver == "cg":
+                        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                            max_ = len(param_tuple_list)
+
+                            with tqdm(total=max_) as pbar:
+                                for _ in pool.imap_unordered(helperclass2d.update_wavefield_cg, param_tuple_list):
+                                    pbar.update()
+
+                    # Write computed wavefield to disk
+                    np.savez_compressed(self.__wavefield_filename(iter_count=iter_count, num_k=k), wavefield)
+
+
+            # ------------------------------------------------------
+            # ------------------------------------------------------
+            # Perform update Step 2 (perturbation update)
+
+            print("\n\n---------------------------------------------")
+            print("Updating perturbation, Iteration " + str(outer_iter_num) + "...\n")
+
+            # ------------------------------------------------------
+            # Update perturbation
+
+            if outer_iter_num == 0:
+                updated_pert = helperclass2d.perform_inversion_update_pert(
+                    obj=self,
+                    iter_count=iter_count,
+                    max_iter=max_iter1, tol=tol, mnorm=mnorm,
+                    num_procs=num_procs,
+                    multi_iter_flag=False
+                )
+
+            else:
+                updated_pert = helperclass2d.perform_inversion_update_pert(
+                    obj=self,
+                    iter_count=iter_count,
+                    max_iter=max_iter1, tol=tol, mnorm=mnorm,
+                    num_procs=num_procs,
+                    multi_iter_flag=True
+                )
+
+            # ------------------------------------------------------
+            # Post processing perturbation
+
+            if use_bounds:
+                with np.load(self.__lower_bound_filename()) as f:
+                    lower_bound = f["arr_0"]
+                with np.load(self.__upper_bound_filename()) as f:
+                    upper_bound = f["arr_0"]
+
+                updated_pert = np.clip(a=updated_pert, a_min=lower_bound, a_max=upper_bound)
+
+            # ------------------------------------------------------
+            # Write computed perturbation to disk
+            np.savez_compressed(self.__model_pert_filename(iter_count=iter_count), updated_pert)
+
+
+        # ------------------------------------------------------
+        # Compute objective functions
+
+        self.__compute_obj1(iter_count=iter_count)
+        self.__compute_obj2(iter_count=iter_count, iter_step=0, num_procs=num_procs)
+        self.__compute_obj2(iter_count=iter_count, iter_step=1, num_procs=num_procs)
+
+        # ------------------------------------------------------
+        # Update parameter file
+
+        # TODO: If else part runs but inner if doesn't, then the process flow breaks,
+        #  but provided here so that user can rerun individual iterations
+
+        if clean or self._state == 6:
+            self._last_iter_num = iter_count
+            self._last_iter_step = 1
+            update_json(filename=self._param_file, key="last iter num", val=self._last_iter_num)
+            update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
+
+        else:
+            if iter_count >= self._last_iter_num:
+                self._last_iter_num = iter_count
+                self._last_iter_step = 1
+                update_json(filename=self._param_file, key="last iter num", val=self._last_iter_num)
+                update_json(filename=self._param_file, key="last iter step", val=self._last_iter_step)
+
+        self._state = 7
+        update_json(filename=self._param_file, key="state", val=self._state)
+        self.__print_reset_state_msg()
+
 
     def get_inverted_wavefield(self, iter_count, num_k, num_source):
         """
@@ -1674,7 +2046,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         # Update .json file
         update_json(filename=self._param_file, key="state", val=self._state)
 
-    def __run_initializer(self):
+    def __run_initializer(self, check_iter_files, num_procs_check_iter_files):
 
         # ----------------------------------------------------
         # Assume restart = False
@@ -1812,27 +2184,68 @@ class ScatteringIntegralGeneralVzInversion2d:
 
             if self._state >= 7:
 
-                self._last_iter_num = int(self._params["last iter num"])
-                self._last_iter_step = int(self._params["last iter step"])
+                if check_iter_files is True:
 
-                if self._last_iter_step == 1:
+                    self._last_iter_num = int(self._params["last iter num"])
+                    self._last_iter_step = int(self._params["last iter step"])
 
-                    for iter_num in range(self._last_iter_num + 1):
+                    if self._last_iter_step == 1:
 
-                        # Check model pert
-                        path = self.__model_pert_filename(iter_count=iter_num)
-                        model_pert = np.load(path)["arr_0"]
+                        param_tuple_list = [
+                            (
+                                self.__model_pert_filename(iter_count=iter_num),
+                                [
+                                    self.__wavefield_filename(
+                                        iter_count=iter_num,
+                                        num_k=i
+                                    ) for i in range(self._num_k_values)
+                                ],
+                                self._nz,
+                                self._n,
+                                self._num_sources,
+                                self._precision,
+                                self._precision_real,
+                                iter_num
+                            ) for iter_num in range(self._last_iter_num + 1)
+                        ]
 
-                        TypeChecker.check_ndarray(
-                            x=model_pert,
-                            shape=(self._nz, self._n),
-                            dtypes=(self._precision_real,),
-                            nan_inf=True
-                        )
+                        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs_check_iter_files)) as pool:
+                            max_ = len(param_tuple_list)
+
+                            with tqdm(total=max_) as pbar:
+                                for _ in pool.imap_unordered(helperclass2d.check_iter_input, param_tuple_list):
+                                    pbar.update()
+
+                    else:
+
+                        param_tuple_list = [
+                            (
+                                self.__model_pert_filename(iter_count=iter_num),
+                                [
+                                    self.__wavefield_filename(
+                                        iter_count=iter_num,
+                                        num_k=i
+                                    ) for i in range(self._num_k_values)
+                                ],
+                                self._nz,
+                                self._n,
+                                self._num_sources,
+                                self._precision,
+                                self._precision_real,
+                                iter_num
+                            ) for iter_num in range(self._last_iter_num)
+                        ]
+
+                        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs_check_iter_files)) as pool:
+                            max_ = len(param_tuple_list)
+
+                            with tqdm(total=max_) as pbar:
+                                for _ in pool.imap_unordered(helperclass2d.check_iter_input, param_tuple_list):
+                                    pbar.update()
 
                         # Check wavefields
                         for i in range(self._num_k_values):
-                            path = self.__wavefield_filename(iter_count=iter_num, num_k=i)
+                            path = self.__wavefield_filename(iter_count=self._last_iter_num, num_k=i)
                             with np.load(path) as f:
                                 wavefield_k = f["arr_0"]
 
@@ -1843,52 +2256,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                                 nan_inf=True
                             )
 
-                        print("Checking Iter" + str(iter_num) + " model pert and wavefields: OK")
-
-                else:
-
-                    for iter_num in range(self._last_iter_num):
-
-                        # Check model pert
-                        path = self.__model_pert_filename(iter_count=iter_num)
-                        model_pert = np.load(path)["arr_0"]
-
-                        TypeChecker.check_ndarray(
-                            x=model_pert,
-                            shape=(self._nz, self._n),
-                            dtypes=(self._precision_real,),
-                            nan_inf=True
-                        )
-
-                        # Check wavefields
-                        for i in range(self._num_k_values):
-                            path = self.__wavefield_filename(iter_count=iter_num, num_k=i)
-                            with np.load(path) as f:
-                                wavefield_k = f["arr_0"]
-
-                            TypeChecker.check_ndarray(
-                                x=wavefield_k,
-                                shape=(self._num_sources, self._nz, self._n),
-                                dtypes=(self._precision,),
-                                nan_inf=True
-                            )
-
-                        print("Checking Iteration " + str(iter_num) + " model pert and wavefields: OK")
-
-                    # Check wavefields
-                    for i in range(self._num_k_values):
-                        path = self.__wavefield_filename(iter_count=self._last_iter_num, num_k=i)
-                        with np.load(path) as f:
-                            wavefield_k = f["arr_0"]
-
-                        TypeChecker.check_ndarray(
-                            x=wavefield_k,
-                            shape=(self._num_sources, self._nz, self._n),
-                            dtypes=(self._precision,),
-                            nan_inf=True
-                        )
-
-                    print("Checking Iteration " + str(self._last_iter_num) + " wavefields: OK")
+                        print("Checking Iteration " + str(self._last_iter_num) + " wavefields: OK")
 
     def __clean(self, state):
 

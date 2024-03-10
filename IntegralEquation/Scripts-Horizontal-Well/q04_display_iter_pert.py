@@ -84,16 +84,6 @@ if __name__ == "__main__":
         aspect_ratio=10, aspect_cbar=10, file_name=None, vmin=2.5, vmax=6.0
     )
 
-    # plot1(
-    #     vel=vp_update - vp_vz, extent=extent, title="Vp update - Vz",
-    #     aspect_ratio=10, aspect_cbar=10, file_name=None
-    # )
-    #
-    # plot1(
-    #     vel=vp_true - vp_vz, extent=extent, title="Vp true - Vz",
-    #     aspect_ratio=10, aspect_cbar=10, file_name=None
-    # )
-
     scale = np.max(np.abs(pert_true))
 
     plot1(
@@ -101,8 +91,6 @@ if __name__ == "__main__":
         aspect_ratio=10, aspect_cbar=10, file_name=None
     )
     plot1(
-        vel=pert, extent=extent, title="Inverted pert", vmin=-scale/10, vmax=scale/10,
+        vel=pert, extent=extent, title="Inverted pert", vmin=-scale, vmax=scale,
         aspect_ratio=10, aspect_cbar=10, file_name=None
     )
-
-

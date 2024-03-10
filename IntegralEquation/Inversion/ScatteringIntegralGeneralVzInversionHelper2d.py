@@ -9,10 +9,49 @@ from multiprocessing.managers import SharedMemoryManager
 from tqdm import tqdm
 from ..Solver.ScatteringIntegralGeneralVz import TruncatedKernelGeneralVz2d
 from ...Utilities.LinearSolvers import gmres_counter, conjugate_gradient
+from ...Utilities import TypeChecker
+
+
+def check_iter_input(params):
+
+    # Read all parameters
+    model_pert_path_ = params[0]
+    wavefield_filename_list_ = params[1]
+    nz_ = params[2]
+    n_ = params[3]
+    num_sources_ = params[4]
+    precision_ = params[5]
+    precision_real_ = params[6]
+    iter_num_ = params[7]
+
+    # Check model pert
+    model_pert_ = np.load(model_pert_path_)["arr_0"]
+
+    TypeChecker.check_ndarray(
+        x=model_pert_,
+        shape=(nz_, n_),
+        dtypes=(precision_real_,),
+        nan_inf=True
+    )
+
+    # Check wavefields
+    for path_ in wavefield_filename_list_:
+        with np.load(path_) as f:
+            wavefield_k_ = f["arr_0"]
+
+        TypeChecker.check_ndarray(
+            x=wavefield_k_,
+            shape=(num_sources_, nz_, n_),
+            dtypes=(precision_,),
+            nan_inf=True
+        )
+
+    print("Checking Iter" + str(iter_num_) + " model pert and wavefields: OK")
 
 
 def green_func_calculate_mp_helper_func(params):
 
+    # Read all parameters
     n_ = int(params[0])
     nz_ = int(params[1])
     a_ = float(params[2])
@@ -663,7 +702,8 @@ def update_wavefield_cg(params):
 
 def perform_inversion_update_pert(
         obj, iter_count,
-        max_iter=100, tol=1e-5, mnorm=0.0, num_procs=1
+        max_iter=100, tol=1e-5, mnorm=0.0, num_procs=1,
+        multi_iter_flag=False
 ):
     """
     Perform inversion -- update wavefields.
@@ -681,6 +721,8 @@ def perform_inversion_update_pert(
         Weight to penalize update to pert
     :param num_procs: int
         Number of processors for multiprocessing while computing objective function
+    :param multi_iter_flag: bool
+        Multiple iteration flag (affects which initial model pert is loaded)
     """
 
     # ------------------------------------------------------
@@ -722,7 +764,10 @@ def perform_inversion_update_pert(
         sm_pert = smm.SharedMemory(size=obj.num_bytes_model_pert())
         pert = ndarray(shape=(obj.nz, obj.n), dtype=obj.precision_real, buffer=sm_pert.buf)
         pert *= 0
-        model_pert_filename = obj.model_pert_filename(iter_count=iter_count - 1)
+        if multi_iter_flag:
+            model_pert_filename = obj.model_pert_filename(iter_count=iter_count)
+        else:
+            model_pert_filename = obj.model_pert_filename(iter_count=iter_count - 1)
         with np.load(model_pert_filename) as f:
             pert += f["arr_0"]
 
