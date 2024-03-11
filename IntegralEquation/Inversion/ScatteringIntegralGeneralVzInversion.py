@@ -1147,6 +1147,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         if solver not in ["lsqr", "lsmr", "cg"]:
             print("solver type not supported. Only solvers available are lsqr, lsmr, and cg.")
             return
+
         TypeChecker.check_float_bounds(x=atol, lb=1e-5, ub=1.0)
         TypeChecker.check_float_bounds(x=btol, lb=1e-5, ub=1.0)
         TypeChecker.check_int_positive(x=max_iter1)
@@ -1211,6 +1212,15 @@ class ScatteringIntegralGeneralVzInversion2d:
         # Perform update
 
         rec_locs = np.asarray(self._rec_locs, dtype=int)
+
+        # Make copies of state variables
+        state_copy = self._state
+        last_iter_num_copy = self._last_iter_num
+        last_iter_step_copy = self._last_iter_step
+
+        self._state = 7
+        self._last_iter_num = iter_count
+        self._last_iter_step = 1
 
         for outer_iter_num in range(num_outer_iter):
 
@@ -1357,11 +1367,6 @@ class ScatteringIntegralGeneralVzInversion2d:
                     # Write computed wavefield to disk
                     np.savez_compressed(self.__wavefield_filename(iter_count=iter_count, num_k=k), wavefield)
 
-            if clean or self._state == 6 or iter_count >= self._last_iter_num:
-                self._state = 7
-                self._last_iter_num = iter_count
-                self._last_iter_step = 0
-
             # ------------------------------------------------------
             # ------------------------------------------------------
             # Perform update Step 2 (perturbation update)
@@ -1415,6 +1420,11 @@ class ScatteringIntegralGeneralVzInversion2d:
 
         # ------------------------------------------------------
         # Update parameter file
+
+        # Restore state variables
+        self._state = state_copy
+        self._last_iter_num = last_iter_num_copy
+        self._last_iter_step = last_iter_step_copy
 
         # TODO: If if doesn't run, then the process flow breaks,
         #  but provided here so that user can rerun individual iterations
