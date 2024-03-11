@@ -17,11 +17,12 @@ if __name__ == "__main__":
     )
 
     # Check arguments
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 4:
         raise ValueError("Program missing command line arguments.")
 
     num_iter = int(sys.argv[1])
     num_outer_iter = int(sys.argv[2])
+    mnorm = float(sys.argv[3])
     num_procs = min(obj.num_sources, mp.cpu_count(), 100)
 
     lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
@@ -31,6 +32,6 @@ if __name__ == "__main__":
         iter_count=num_iter, num_outer_iter=num_outer_iter,
         lambda_arr=lambda_arr, mu_arr=mu_arr,
         max_iter=40, solver="cg", atol=1e-5, btol=1e-5,
-        max_iter1=20, tol=1e-5, mnorm=0.0001, use_bounds=True,
+        max_iter1=20, tol=1e-5, mnorm=mnorm, use_bounds=True,
         num_procs=num_procs, clean=True
     )
