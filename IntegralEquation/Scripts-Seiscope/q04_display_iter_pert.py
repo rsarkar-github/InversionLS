@@ -29,7 +29,7 @@ def plot1(vel, extent, title, aspect_ratio=1, aspect_cbar=10, file_name=None, vm
 
 if __name__ == "__main__":
 
-    basedir = "InversionLS/Expt/horizontal-well/"
+    basedir = "InversionLS/Expt/seiscope/"
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
@@ -94,6 +94,6 @@ if __name__ == "__main__":
         aspect_ratio=aspect, aspect_cbar=10, file_name=None
     )
     plot1(
-        vel=pert, extent=extent, title="Inverted pert", vmin=-scale, vmax=scale,
+        vel=pert, extent=extent, title="Inverted pert",
         aspect_ratio=aspect, aspect_cbar=10, file_name=None
     )
