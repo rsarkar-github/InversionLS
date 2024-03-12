@@ -1,7 +1,5 @@
-import os
-import numpy as np
+import multiprocessing as mp
 from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
-import matplotlib.pyplot as plt
 
 
 if __name__ == "__main__":
@@ -18,4 +16,5 @@ if __name__ == "__main__":
     print("Set zero initial perturbation and wavefields...")
     print("\n")
 
-    obj.set_zero_initial_pert_wavefields(num_procs=10)
+    num_procs = min(obj.num_sources, mp.cpu_count(), 30)
+    obj.set_zero_initial_pert(num_procs=num_procs)
