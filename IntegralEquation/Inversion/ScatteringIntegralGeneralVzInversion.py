@@ -927,21 +927,22 @@ class ScatteringIntegralGeneralVzInversion2d:
                     ) for i in range(self._num_sources) if lambda_arr[k, i] != 0.0 or mu_arr[k, i] != 0.0
                 ]
 
-                if solver in ["lsqr", "lsmr"]:
-                    with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                        max_ = len(param_tuple_list)
+                if len(param_tuple_list) >= 1:
+                    if solver in ["lsqr", "lsmr"]:
+                        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                            max_ = len(param_tuple_list)
 
-                        with tqdm(total=max_) as pbar:
-                            for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
-                                pbar.update()
+                            with tqdm(total=max_) as pbar:
+                                for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
+                                    pbar.update()
 
-                if solver == "cg":
-                    with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                        max_ = len(param_tuple_list)
+                    if solver == "cg":
+                        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                            max_ = len(param_tuple_list)
 
-                        with tqdm(total=max_) as pbar:
-                            for _ in pool.imap_unordered(helperclass2d.update_wavefield_cg, param_tuple_list):
-                                pbar.update()
+                            with tqdm(total=max_) as pbar:
+                                for _ in pool.imap_unordered(helperclass2d.update_wavefield_cg, param_tuple_list):
+                                    pbar.update()
 
                 # Write computed wavefield to disk
                 np.savez_compressed(self.__wavefield_filename(iter_count=iter_count, num_k=k), wavefield)
@@ -1347,21 +1348,23 @@ class ScatteringIntegralGeneralVzInversion2d:
                         ) for i in range(self._num_sources) if lambda_arr[k, i] != 0.0 or mu_arr[k, i] != 0.0
                     ]
 
-                    if solver in ["lsqr", "lsmr"]:
-                        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                            max_ = len(param_tuple_list)
+                    if len(param_tuple_list) >= 1:
 
-                            with tqdm(total=max_) as pbar:
-                                for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
-                                    pbar.update()
+                        if solver in ["lsqr", "lsmr"]:
+                            with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                                max_ = len(param_tuple_list)
 
-                    if solver == "cg":
-                        with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                            max_ = len(param_tuple_list)
+                                with tqdm(total=max_) as pbar:
+                                    for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
+                                        pbar.update()
 
-                            with tqdm(total=max_) as pbar:
-                                for _ in pool.imap_unordered(helperclass2d.update_wavefield_cg, param_tuple_list):
-                                    pbar.update()
+                        if solver == "cg":
+                            with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                                max_ = len(param_tuple_list)
+
+                                with tqdm(total=max_) as pbar:
+                                    for _ in pool.imap_unordered(helperclass2d.update_wavefield_cg, param_tuple_list):
+                                        pbar.update()
 
                     # Write computed wavefield to disk
                     np.savez_compressed(self.__wavefield_filename(iter_count=iter_count, num_k=k), wavefield)

@@ -423,7 +423,8 @@ def update_wavefield(params):
     psi_ = ndarray(shape=(nz_, n_), dtype=precision_real_, buffer=sm_model_pert_.buf)
 
     # ------------------------------------------------------
-    # Handle zero weights separately
+    # Inversion
+
     if lambda_ != 0.0 or mu_ != 0.0:
 
         # ------------------------------------------------------
@@ -844,13 +845,13 @@ def perform_inversion_update_pert(
                     sm_rhs.name
                 ) for i in range(obj.num_sources) if lambda_arr[k, i] != 0.0
             ]
+            if len(param_tuple_list) >= 1:
+                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                    max_ = len(param_tuple_list)
 
-            with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                max_ = len(param_tuple_list)
-
-                with tqdm(total=max_) as pbar:
-                    for _ in pool.imap_unordered(compute_rhs_for_pert_update, param_tuple_list):
-                        pbar.update()
+                    with tqdm(total=max_) as pbar:
+                        for _ in pool.imap_unordered(compute_rhs_for_pert_update, param_tuple_list):
+                            pbar.update()
 
             # Handle zero lambda values separately
             for i in range(obj.num_sources):
@@ -945,12 +946,13 @@ def perform_inversion_update_pert(
                     ) for i in range(obj.num_sources) if lambda_arr[k_, i] != 0.0
                 ]
 
-                with Pool(min(len(param_tuple_list_), mp.cpu_count(), num_procs)) as pool_:
-                    maxx_ = len(param_tuple_list_)
+                if len(param_tuple_list) >= 1:
+                    with Pool(min(len(param_tuple_list_), mp.cpu_count(), num_procs)) as pool_:
+                        maxx_ = len(param_tuple_list_)
 
-                    with tqdm(total=maxx_) as pbar_:
-                        for _ in pool_.imap_unordered(compute_matvec_for_pert_update, param_tuple_list_):
-                            pbar_.update()
+                        with tqdm(total=maxx_) as pbar_:
+                            for _ in pool_.imap_unordered(compute_matvec_for_pert_update, param_tuple_list_):
+                                pbar_.update()
 
                 # Handle zero lambda values separately
                 for i in range(obj.num_sources):
