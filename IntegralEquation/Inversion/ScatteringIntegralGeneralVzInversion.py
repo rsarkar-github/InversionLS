@@ -924,7 +924,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                         solver,
                         atol,
                         btol
-                    ) for i in range(self._num_sources)
+                    ) for i in range(self._num_sources) if lambda_arr[k, i] != 0.0 or mu_arr[k, i] != 0
                 ]
 
                 if solver in ["lsqr", "lsmr"]:

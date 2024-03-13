@@ -424,10 +424,8 @@ def update_wavefield(params):
 
     # ------------------------------------------------------
     # Handle zero weights separately
-    if lambda_ == 0.0 and mu_ == 0.0:
-        wavefield_[num_source_, :, :] += 0.0
+    if lambda_ != 0.0 or mu_ != 0.0:
 
-    else:
         # ------------------------------------------------------
         # Define linear operator objects
         # Compute rhs (scale to norm 1)
@@ -610,11 +608,10 @@ def update_wavefield_cg(params):
     psi_ = ndarray(shape=(nz_, n_), dtype=precision_real_, buffer=sm_model_pert_.buf)
 
     # ------------------------------------------------------
-    # Handle zero weights separately
-    if lambda_ == 0.0 and mu_ == 0.0:
-        wavefield_[num_source_, :, :] += 0.0
+    # Inversion
 
-    else:
+    if lambda_ != 0.0 or mu_ == 0.0:
+
         # ------------------------------------------------------
         # Define linear operator objects
         # Compute rhs (scale to norm 1)
@@ -845,7 +842,7 @@ def perform_inversion_update_pert(
                     sm_wavefield.name,
                     sm_pert.name,
                     sm_rhs.name
-                ) for i in range(obj.num_sources)
+                ) for i in range(obj.num_sources) if lambda_arr[k, i] != 0.0
             ]
 
             with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
@@ -854,6 +851,11 @@ def perform_inversion_update_pert(
                 with tqdm(total=max_) as pbar:
                     for _ in pool.imap_unordered(compute_rhs_for_pert_update, param_tuple_list):
                         pbar.update()
+
+            # Handle zero lambda values separately
+            for i in range(obj.num_sources):
+                if lambda_arr[k, i] == 0.0:
+                    rhs[i, :, :] = 0.0
 
             # Sum the result
             rhs_inv += np.sum(rhs, axis=0)
@@ -940,7 +942,7 @@ def perform_inversion_update_pert(
                         sm_greens_func.name,
                         sm_wavefield.name,
                         sm_sumarr.name
-                    ) for i in range(obj.num_sources)
+                    ) for i in range(obj.num_sources) if lambda_arr[k_, i] != 0.0
                 ]
 
                 with Pool(min(len(param_tuple_list_), mp.cpu_count(), num_procs)) as pool_:
@@ -949,6 +951,11 @@ def perform_inversion_update_pert(
                     with tqdm(total=maxx_) as pbar_:
                         for _ in pool_.imap_unordered(compute_matvec_for_pert_update, param_tuple_list_):
                             pbar_.update()
+
+                # Handle zero lambda values separately
+                for i in range(obj.num_sources):
+                    if lambda_arr[k_, i] == 0.0:
+                        sumarr[i, :, : ] = 0.0
 
                 # Sum the result
                 sum_accumulated += np.real(np.sum(sumarr, axis=0)).astype(obj.precision_real)
