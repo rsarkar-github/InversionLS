@@ -10,4 +10,4 @@ conda activate py39
 cd $SCRIPT_DIR
 cd ../../../..
 
-python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p09_perform_update 7 2 0.000001
+python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p09_perform_update 7 8 0.000001
