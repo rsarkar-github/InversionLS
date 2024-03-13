@@ -1961,9 +1961,12 @@ class ScatteringIntegralGeneralVzInversion2d:
             return 0, 0
 
         elif self._state == 7:
+            print("bb")
             if self._last_iter_step == 0:
+                print("cc")
                 return self._last_iter_num, 1
             if self._last_iter_step == 1:
+                print("dd")
                 return self._last_iter_num + 1, 0
 
     def __k_values_filename(self):
