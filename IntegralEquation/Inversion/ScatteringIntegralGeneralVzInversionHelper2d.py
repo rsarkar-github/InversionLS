@@ -916,53 +916,54 @@ def perform_inversion_update_pert(
                 print("\n---------------------------------------------")
                 print("Starting k number ", k_)
 
-                # Load Green's func into shared memory
-                green_func_filename_ = obj.greens_func_filename(num_k=k_)
-                with np.load(green_func_filename_) as f_:
-                    zero_and_add(green_func, f_["arr_0"])
+                if np.sum(lambda_arr[k, :]) > 0.0:
+                    # Load Green's func into shared memory
+                    green_func_filename_ = obj.greens_func_filename(num_k=k_)
+                    with np.load(green_func_filename_) as f_:
+                        zero_and_add(green_func, f_["arr_0"])
 
-                # Load initial wavefield into shared memory
-                wavefield_filename_ = obj.wavefield_filename(num_k=k_, iter_count=iter_count)
-                with np.load(wavefield_filename_) as f_:
-                    zero_and_add(wavefield, f_["arr_0"])
+                    # Load initial wavefield into shared memory
+                    wavefield_filename_ = obj.wavefield_filename(num_k=k_, iter_count=iter_count)
+                    with np.load(wavefield_filename_) as f_:
+                        zero_and_add(wavefield, f_["arr_0"])
 
-                param_tuple_list_ = [
-                    (
-                        obj.n,
-                        obj.nz,
-                        obj.a,
-                        obj.b,
-                        obj.k_values[k_],
-                        obj.vz,
-                        obj.m,
-                        obj.sigma_greens_func,
-                        obj.precision,
-                        obj.greens_func_filedir(num_k=k_),
-                        obj.num_sources,
-                        i,
-                        lambda_arr[k_, i],
-                        v,
-                        sm_greens_func.name,
-                        sm_wavefield.name,
-                        sm_sumarr.name
-                    ) for i in range(obj.num_sources) if lambda_arr[k_, i] != 0.0
-                ]
+                    param_tuple_list_ = [
+                        (
+                            obj.n,
+                            obj.nz,
+                            obj.a,
+                            obj.b,
+                            obj.k_values[k_],
+                            obj.vz,
+                            obj.m,
+                            obj.sigma_greens_func,
+                            obj.precision,
+                            obj.greens_func_filedir(num_k=k_),
+                            obj.num_sources,
+                            i,
+                            lambda_arr[k_, i],
+                            v,
+                            sm_greens_func.name,
+                            sm_wavefield.name,
+                            sm_sumarr.name
+                        ) for i in range(obj.num_sources) if lambda_arr[k_, i] != 0.0
+                    ]
 
-                if len(param_tuple_list) >= 1:
-                    with Pool(min(len(param_tuple_list_), mp.cpu_count(), num_procs)) as pool_:
-                        maxx_ = len(param_tuple_list_)
+                    if len(param_tuple_list_) >= 1:
+                        with Pool(min(len(param_tuple_list_), mp.cpu_count(), num_procs)) as pool_:
+                            maxx_ = len(param_tuple_list_)
 
-                        with tqdm(total=maxx_) as pbar_:
-                            for _ in pool_.imap_unordered(compute_matvec_for_pert_update, param_tuple_list_):
-                                pbar_.update()
+                            with tqdm(total=maxx_) as pbar_:
+                                for _ in pool_.imap_unordered(compute_matvec_for_pert_update, param_tuple_list_):
+                                    pbar_.update()
 
-                # Handle zero lambda values separately
-                for i in range(obj.num_sources):
-                    if lambda_arr[k_, i] == 0.0:
-                        sumarr[i, :, : ] = 0.0
+                    # Handle zero lambda values separately
+                    for i in range(obj.num_sources):
+                        if lambda_arr[k_, i] == 0.0:
+                            sumarr[i, :, : ] = 0.0
 
-                # Sum the result
-                sum_accumulated += np.real(np.sum(sumarr, axis=0)).astype(obj.precision_real)
+                    # Sum the result
+                    sum_accumulated += np.real(np.sum(sumarr, axis=0)).astype(obj.precision_real)
 
             end_tt_ = time.time()
             print(
