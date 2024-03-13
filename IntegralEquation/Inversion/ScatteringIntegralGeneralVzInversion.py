@@ -1136,7 +1136,6 @@ class ScatteringIntegralGeneralVzInversion2d:
                 "\nOperation not allowed. Need self._state >= 6, but obtained self._state = ", self._state
             )
             return
-        print("aaaaaa",self.__get_next_iter_num())
         if iter_count is not None:
             TypeChecker.check_int_bounds(x=iter_count, lb=0, ub=self.__get_next_iter_num()[0])
         else:
@@ -1961,12 +1960,9 @@ class ScatteringIntegralGeneralVzInversion2d:
             return 0, 0
 
         elif self._state == 7:
-            print("bb")
             if self._last_iter_step == 0:
-                print("cc")
                 return self._last_iter_num, 1
             if self._last_iter_step == 1:
-                print("dd")
                 return self._last_iter_num + 1, 0
 
     def __k_values_filename(self):
@@ -2195,10 +2191,10 @@ class ScatteringIntegralGeneralVzInversion2d:
 
             if self._state >= 7:
 
-                if check_iter_files is True:
+                self._last_iter_num = int(self._params["last iter num"])
+                self._last_iter_step = int(self._params["last iter step"])
 
-                    self._last_iter_num = int(self._params["last iter num"])
-                    self._last_iter_step = int(self._params["last iter step"])
+                if check_iter_files is True:
 
                     if self._last_iter_step == 1:
 
