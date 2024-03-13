@@ -25,13 +25,13 @@ if __name__ == "__main__":
     mnorm = float(sys.argv[3])
     num_procs = min(obj.num_sources, mp.cpu_count(), 40)
 
-    lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 0.01
-    mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
+    lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1
+    mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 100.0
 
     obj.perform_inversion_update_wavefield_model_pert(
         iter_count=num_iter, num_outer_iter=num_outer_iter,
         lambda_arr=lambda_arr, mu_arr=mu_arr,
         max_iter=40, solver="cg", atol=1e-5, btol=1e-5,
-        max_iter1=40, tol=1e-5, mnorm=mnorm, use_bounds=True,
+        max_iter1=20, tol=1e-5, mnorm=mnorm, use_bounds=True,
         num_procs=num_procs, clean=True
     )
