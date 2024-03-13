@@ -12,7 +12,7 @@ if __name__ == "__main__":
         basedir=basedir,
         restart=True,
         restart_code=None,
-        check_iter_files=True,
+        check_iter_files=False, #TODO change
         num_procs_check_iter_files=num_procs
     )
 
