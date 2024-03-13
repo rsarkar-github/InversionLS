@@ -8,7 +8,7 @@ source .bashrc
 conda activate py39
 
 cd $SCRIPT_DIR
-cd ../../..
+cd ../../../..
 
 python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p07_perform_update 2 20 0.0001
 python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p07_perform_update 3 20 0.00001

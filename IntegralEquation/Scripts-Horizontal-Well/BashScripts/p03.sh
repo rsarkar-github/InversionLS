@@ -8,6 +8,6 @@ source .bashrc
 conda activate py39
 
 cd $SCRIPT_DIR
-cd ../../..
+cd ../../../..
 
 python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p03_calculate_green_func

@@ -7,6 +7,6 @@ source .bashrc
 conda activate py39
 
 cd $SCRIPT_DIR
-cd ../../..
+cd ../../../..
 
 python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p01_create_params_jsonfile

@@ -8,6 +8,6 @@ source .bashrc
 conda activate py39
 
 cd $SCRIPT_DIR
-cd ../../..
+cd ../../../..
 
 python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p05_compute_true_data
