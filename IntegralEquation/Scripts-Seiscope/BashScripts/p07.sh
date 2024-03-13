@@ -9,4 +9,4 @@ conda activate py39
 cd $SCRIPT_DIR
 cd ../../../..
 
-python -m InversionLS.IntegralEquation.Scripts-Seiscope.p07_perform_update 0 1 0.01
+python -m InversionLS.IntegralEquation.Scripts-Seiscope.p07_perform_update 0 1 1.0
