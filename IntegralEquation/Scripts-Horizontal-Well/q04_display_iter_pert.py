@@ -47,10 +47,15 @@ if __name__ == "__main__":
     num_iter = int(sys.argv[1])
     aspect = int(sys.argv[2])
 
-    # Get perturbation, true perturbation
+    # Get perturbation, true perturbation, perturbation from one previous iteration
     pert_fname = obj.model_pert_filename(iter_count=num_iter)
     with np.load(pert_fname) as f:
         pert = f["arr_0"]
+
+
+    pert_fname = obj.model_pert_filename(iter_count=num_iter-1)
+    with np.load(pert_fname) as f:
+        pert1 = f["arr_0"]
 
     pert_true = obj.true_model_pert
 
@@ -95,5 +100,10 @@ if __name__ == "__main__":
     )
     plot1(
         vel=pert, extent=extent, title="Inverted pert", vmin=-scale, vmax=scale,
+        aspect_ratio=aspect, aspect_cbar=10, file_name=None
+    )
+
+    plot1(
+        vel=pert-pert1, extent=extent, title="Inverted pert[iter] - Inverted pert[iter-1]",
         aspect_ratio=aspect, aspect_cbar=10, file_name=None
     )
