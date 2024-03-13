@@ -1136,7 +1136,7 @@ class ScatteringIntegralGeneralVzInversion2d:
                 "\nOperation not allowed. Need self._state >= 6, but obtained self._state = ", self._state
             )
             return
-
+        print("aaaaaa",self.__get_next_iter_num())
         if iter_count is not None:
             TypeChecker.check_int_bounds(x=iter_count, lb=0, ub=self.__get_next_iter_num()[0])
         else:
