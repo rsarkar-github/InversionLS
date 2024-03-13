@@ -804,62 +804,64 @@ def perform_inversion_update_pert(
             print("\n---------------------------------------------")
             print("Starting k number ", k)
 
-            # Load Green's func into shared memory
-            green_func *= 0
-            green_func_filename = obj.greens_func_filename(num_k=k)
-            with np.load(green_func_filename) as f:
-                green_func += f["arr_0"]
+            if np.sum(lambda_arr[k, :]) > 0.0:
 
-            # Load source into shared memory
-            source *= 0
-            source_filename = obj.source_filename(num_k=k)
-            with np.load(source_filename) as f:
-                source += f["arr_0"]
+                # Load Green's func into shared memory
+                green_func *= 0
+                green_func_filename = obj.greens_func_filename(num_k=k)
+                with np.load(green_func_filename) as f:
+                    green_func += f["arr_0"]
 
-            # Load initial wavefield into shared memory
-            wavefield *= 0
-            wavefield_filename = obj.wavefield_filename(num_k=k, iter_count=iter_count)
-            with np.load(wavefield_filename) as f:
-                wavefield += f["arr_0"]
+                # Load source into shared memory
+                source *= 0
+                source_filename = obj.source_filename(num_k=k)
+                with np.load(source_filename) as f:
+                    source += f["arr_0"]
 
-            param_tuple_list = [
-                (
-                    obj.n,
-                    obj.nz,
-                    obj.a,
-                    obj.b,
-                    obj.k_values[k],
-                    obj.vz,
-                    obj.m,
-                    obj.sigma_greens_func,
-                    obj.precision,
-                    obj.precision_real,
-                    obj.greens_func_filedir(num_k=k),
-                    obj.num_sources,
-                    i,
-                    lambda_arr[k, i],
-                    sm_greens_func.name,
-                    sm_source.name,
-                    sm_wavefield.name,
-                    sm_pert.name,
-                    sm_rhs.name
-                ) for i in range(obj.num_sources) if lambda_arr[k, i] != 0.0
-            ]
-            if len(param_tuple_list) >= 1:
-                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                    max_ = len(param_tuple_list)
+                # Load initial wavefield into shared memory
+                wavefield *= 0
+                wavefield_filename = obj.wavefield_filename(num_k=k, iter_count=iter_count)
+                with np.load(wavefield_filename) as f:
+                    wavefield += f["arr_0"]
 
-                    with tqdm(total=max_) as pbar:
-                        for _ in pool.imap_unordered(compute_rhs_for_pert_update, param_tuple_list):
-                            pbar.update()
+                param_tuple_list = [
+                    (
+                        obj.n,
+                        obj.nz,
+                        obj.a,
+                        obj.b,
+                        obj.k_values[k],
+                        obj.vz,
+                        obj.m,
+                        obj.sigma_greens_func,
+                        obj.precision,
+                        obj.precision_real,
+                        obj.greens_func_filedir(num_k=k),
+                        obj.num_sources,
+                        i,
+                        lambda_arr[k, i],
+                        sm_greens_func.name,
+                        sm_source.name,
+                        sm_wavefield.name,
+                        sm_pert.name,
+                        sm_rhs.name
+                    ) for i in range(obj.num_sources) if lambda_arr[k, i] != 0.0
+                ]
+                if len(param_tuple_list) >= 1:
+                    with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                        max_ = len(param_tuple_list)
 
-            # Handle zero lambda values separately
-            for i in range(obj.num_sources):
-                if lambda_arr[k, i] == 0.0:
-                    rhs[i, :, :] = 0.0
+                        with tqdm(total=max_) as pbar:
+                            for _ in pool.imap_unordered(compute_rhs_for_pert_update, param_tuple_list):
+                                pbar.update()
 
-            # Sum the result
-            rhs_inv += np.sum(rhs, axis=0)
+                # Handle zero lambda values separately
+                for i in range(obj.num_sources):
+                    if lambda_arr[k, i] == 0.0:
+                        rhs[i, :, :] = 0.0
+
+                # Sum the result
+                rhs_inv += np.sum(rhs, axis=0)
 
         # Take real part
         rhs_inv = np.real(rhs_inv).astype(obj.precision_real)

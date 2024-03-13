@@ -873,29 +873,30 @@ class ScatteringIntegralGeneralVzInversion2d:
                 print("---------------------------------------------")
                 print("Starting k number ", k)
 
-                # Load Green's func into shared memory
-                green_func *= 0
-                green_func_filename = self.__greens_func_filename(num_k=k)
-                with np.load(green_func_filename) as f:
-                    green_func += f["arr_0"]
-
-                # Load source into shared memory
-                source *= 0
-                source_filename = self.__source_filename(num_k=k)
-                with np.load(source_filename) as f:
-                    source += f["arr_0"]
-
                 # Load initial wavefield into shared memory
                 wavefield *= 0
                 wavefield_filename = self.__wavefield_filename(num_k=k, iter_count=iter_count - 1)
                 with np.load(wavefield_filename) as f:
                     wavefield += f["arr_0"]
 
-                # Load true data into shared memory
-                true_data *= 0
-                true_data_filename = self.__true_data_filename(num_k=k)
-                with np.load(true_data_filename) as f:
-                    true_data += f["arr_0"]
+                if np.sum(lambda_arr[k, :]) > 0.0 or np.sum(mu_arr[k, :]) > 0.0:
+                    # Load Green's func into shared memory
+                    green_func *= 0
+                    green_func_filename = self.__greens_func_filename(num_k=k)
+                    with np.load(green_func_filename) as f:
+                        green_func += f["arr_0"]
+
+                    # Load source into shared memory
+                    source *= 0
+                    source_filename = self.__source_filename(num_k=k)
+                    with np.load(source_filename) as f:
+                        source += f["arr_0"]
+
+                    # Load true data into shared memory
+                    true_data *= 0
+                    true_data_filename = self.__true_data_filename(num_k=k)
+                    with np.load(true_data_filename) as f:
+                        true_data += f["arr_0"]
 
                 param_tuple_list = [
                     (
@@ -1291,18 +1292,6 @@ class ScatteringIntegralGeneralVzInversion2d:
                     print("---------------------------------------------")
                     print("Starting k number ", k)
 
-                    # Load Green's func into shared memory
-                    green_func *= 0
-                    green_func_filename = self.__greens_func_filename(num_k=k)
-                    with np.load(green_func_filename) as f:
-                        green_func += f["arr_0"]
-
-                    # Load source into shared memory
-                    source *= 0
-                    source_filename = self.__source_filename(num_k=k)
-                    with np.load(source_filename) as f:
-                        source += f["arr_0"]
-
                     # Load initial wavefield into shared memory
                     wavefield *= 0
                     if outer_iter_num == 0:
@@ -1312,11 +1301,25 @@ class ScatteringIntegralGeneralVzInversion2d:
                     with np.load(wavefield_filename) as f:
                         wavefield += f["arr_0"]
 
-                    # Load true data into shared memory
-                    true_data *= 0
-                    true_data_filename = self.__true_data_filename(num_k=k)
-                    with np.load(true_data_filename) as f:
-                        true_data += f["arr_0"]
+                    if np.sum(lambda_arr[k, :]) > 0.0 or np.sum(mu_arr[k, :]) > 0.0:
+
+                        # Load Green's func into shared memory
+                        green_func *= 0
+                        green_func_filename = self.__greens_func_filename(num_k=k)
+                        with np.load(green_func_filename) as f:
+                            green_func += f["arr_0"]
+
+                        # Load source into shared memory
+                        source *= 0
+                        source_filename = self.__source_filename(num_k=k)
+                        with np.load(source_filename) as f:
+                            source += f["arr_0"]
+
+                        # Load true data into shared memory
+                        true_data *= 0
+                        true_data_filename = self.__true_data_filename(num_k=k)
+                        with np.load(true_data_filename) as f:
+                            true_data += f["arr_0"]
 
                     param_tuple_list = [
                         (
