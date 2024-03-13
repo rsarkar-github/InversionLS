@@ -423,110 +423,116 @@ def update_wavefield(params):
     psi_ = ndarray(shape=(nz_, n_), dtype=precision_real_, buffer=sm_model_pert_.buf)
 
     # ------------------------------------------------------
-    # Define linear operator objects
-    # Compute rhs (scale to norm 1)
+    # Handle zero weights separately
+    if lambda_ == 0.0 and mu_ == 0.0:
+        wavefield_[num_source_, :, :] += 0.0
 
-    num_recs_ = rec_locs_.shape[0]
-    def func_matvec(v):
-        v = np.reshape(v, newshape=(nz_, n_))
-        u = v * 0
-        op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
-        u = lambda_ * np.reshape(v - (k_ ** 2) * u, newshape=(nz_ * n_,))
-        u1 = mu_ * np.reshape(v[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
+    else:
+        # ------------------------------------------------------
+        # Define linear operator objects
+        # Compute rhs (scale to norm 1)
 
-        out = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
-        out[0:nz_ * n_] = u
-        out[nz_ * n_:] = u1
+        num_recs_ = rec_locs_.shape[0]
+        def func_matvec(v):
+            v = np.reshape(v, newshape=(nz_, n_))
+            u = v * 0
+            op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
+            u = lambda_ * np.reshape(v - (k_ ** 2) * u, newshape=(nz_ * n_,))
+            u1 = mu_ * np.reshape(v[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
 
-        return out
+            out = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
+            out[0:nz_ * n_] = u
+            out[nz_ * n_:] = u1
 
-    def func_matvec_adj(v):
+            return out
 
-        v1 = np.reshape(v[0:nz_ * n_], newshape=(nz_, n_))
-        u = v1 * 0
-        op_.apply_kernel(u=v1, output=u, adj=True, add=False)
-        u = lambda_ * np.reshape(v1 - (k_ ** 2) * u * psi_, newshape=(nz_ * n_,))
+        def func_matvec_adj(v):
 
-        v1 *= 0
-        v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_ * n_:]
-        v1 = np.reshape(v1, newshape=(nz_ * n_,))
+            v1 = np.reshape(v[0:nz_ * n_], newshape=(nz_, n_))
+            u = v1 * 0
+            op_.apply_kernel(u=v1, output=u, adj=True, add=False)
+            u = lambda_ * np.reshape(v1 - (k_ ** 2) * u * psi_, newshape=(nz_ * n_,))
 
-        return u + v1
+            v1 *= 0
+            v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_ * n_:]
+            v1 = np.reshape(v1, newshape=(nz_ * n_,))
 
-    linop_lse = LinearOperator(
-        shape=(nz_ * n_ + num_recs_, nz_ * n_),
-        matvec=func_matvec,
-        rmatvec=func_matvec_adj,
-        dtype=precision_
-    )
+            return u + v1
 
-    temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
-    op_.apply_kernel(u=source_[num_source_, :, :], output=temp_)
-    temp_ = lambda_ * np.reshape(temp_, newshape=(nz_ * n_,))
-
-    temp1_ = true_data_[num_source_, :, :]
-    temp1_ = np.reshape(mu_ * temp1_[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
-
-    rhs_ = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
-    rhs_[0:nz_ * n_] = temp_
-    rhs_[nz_ * n_:] = temp1_
-    rhs_ -= func_matvec(
-        v=np.reshape(wavefield_[num_source_, :, :], newshape=(nz_ * n_, 1))
-    )
-
-    rhs_scale_ = np.linalg.norm(rhs_)
-    if rhs_scale_ < 1e-15:
-        rhs_scale_ = 1.0
-    rhs_ = rhs_ / rhs_scale_
-
-    del temp_, temp1_
-
-    # ------------------------------------------------------
-    # Solve for solution
-
-    if solver_ == "lsmr":
-        start_t_ = time.time()
-        sol_, istop_, itn_, normr_, normar_ = lsmr(
-            linop_lse,
-            rhs_,
-            atol=atol_,
-            btol=btol_,
-            show=True, #TODO: change to False
-            maxiter=max_iter_
-        )[:5]
-
-        wavefield_[num_source_, :, :] += np.reshape(rhs_scale_ * sol_, newshape=(nz_, n_))
-        end_t_ = time.time()
-        print(
-            "Shot num = ", num_source_,
-            ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
-            ", istop = ", istop_,
-            ", itn = ", itn_,
-            ", normr_ = ", normr_,
-            ", normar_ = ", normar_
+        linop_lse = LinearOperator(
+            shape=(nz_ * n_ + num_recs_, nz_ * n_),
+            matvec=func_matvec,
+            rmatvec=func_matvec_adj,
+            dtype=precision_
         )
 
-    if solver_ == "lsqr":
-        start_t_ = time.time()
-        sol_, istop_, itn_, normr_, _, _, _, normar_ = lsqr(
-            linop_lse,
-            rhs_,
-            atol=atol_,
-            btol=btol_,
-            show=False,
-            iter_lim=max_iter_
-        )[:8]
+        temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+        op_.apply_kernel(u=source_[num_source_, :, :], output=temp_)
+        temp_ = lambda_ * np.reshape(temp_, newshape=(nz_ * n_,))
 
-        wavefield_[num_source_, :, :] += np.reshape(rhs_scale_ * sol_, newshape=(nz_, n_))
-        end_t_ = time.time()
-        print(
-            "Shot num = ", num_source_,
-            ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
-            ", istop = ", istop_,
-            ", itn = ", itn_,
-            ", normr_ = ", normr_,
-            ", normar_ = ", normar_
+        temp1_ = true_data_[num_source_, :, :]
+        temp1_ = np.reshape(mu_ * temp1_[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
+
+        rhs_ = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
+        rhs_[0:nz_ * n_] = temp_
+        rhs_[nz_ * n_:] = temp1_
+        rhs_ -= func_matvec(
+            v=np.reshape(wavefield_[num_source_, :, :], newshape=(nz_ * n_, 1))
         )
+
+        rhs_scale_ = np.linalg.norm(rhs_)
+        if rhs_scale_ < 1e-15:
+            rhs_scale_ = 1.0
+        rhs_ = rhs_ / rhs_scale_
+
+        del temp_, temp1_
+
+        # ------------------------------------------------------
+        # Solve for solution
+
+        if solver_ == "lsmr":
+            start_t_ = time.time()
+            sol_, istop_, itn_, normr_, normar_ = lsmr(
+                linop_lse,
+                rhs_,
+                atol=atol_,
+                btol=btol_,
+                show=False,
+                maxiter=max_iter_
+            )[:5]
+
+            wavefield_[num_source_, :, :] += np.reshape(rhs_scale_ * sol_, newshape=(nz_, n_))
+            end_t_ = time.time()
+            print(
+                "Shot num = ", num_source_,
+                ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
+                ", istop = ", istop_,
+                ", itn = ", itn_,
+                ", normr_ = ", normr_,
+                ", normar_ = ", normar_
+            )
+
+        if solver_ == "lsqr":
+            start_t_ = time.time()
+            sol_, istop_, itn_, normr_, _, _, _, normar_ = lsqr(
+                linop_lse,
+                rhs_,
+                atol=atol_,
+                btol=btol_,
+                show=False,
+                iter_lim=max_iter_
+            )[:8]
+
+            wavefield_[num_source_, :, :] += np.reshape(rhs_scale_ * sol_, newshape=(nz_, n_))
+            end_t_ = time.time()
+            print(
+                "Shot num = ", num_source_,
+                ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
+                ", istop = ", istop_,
+                ", itn = ", itn_,
+                ", normr_ = ", normr_,
+                ", normar_ = ", normar_
+            )
 
     # ------------------------------------------------------
     # Release shared memory
@@ -604,92 +610,98 @@ def update_wavefield_cg(params):
     psi_ = ndarray(shape=(nz_, n_), dtype=precision_real_, buffer=sm_model_pert_.buf)
 
     # ------------------------------------------------------
-    # Define linear operator objects
-    # Compute rhs (scale to norm 1)
+    # Handle zero weights separately
+    if lambda_ == 0.0 and mu_ == 0.0:
+        wavefield_[num_source_, :, :] += 0.0
 
-    num_recs_ = rec_locs_.shape[0]
+    else:
+        # ------------------------------------------------------
+        # Define linear operator objects
+        # Compute rhs (scale to norm 1)
 
-    def func_normal_op(v):
+        num_recs_ = rec_locs_.shape[0]
 
-        v = np.reshape(v, newshape=(nz_, n_))
-        u = v * 0
-        op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
-        u = v - (k_ ** 2) * u
-        u *= lambda_
+        def func_normal_op(v):
 
-        out = v * 0
-        op_.apply_kernel(u=u, output=out, adj=True, add=False)
-        out = u - (k_ ** 2) * out * psi_
-        out *= lambda_
+            v = np.reshape(v, newshape=(nz_, n_))
+            u = v * 0
+            op_.apply_kernel(u=v * psi_, output=u, adj=False, add=False)
+            u = v - (k_ ** 2) * u
+            u *= lambda_
 
-        u *= 0
-        u[rec_locs_[:, 0], rec_locs_[:, 1]] = v[rec_locs_[:, 0], rec_locs_[:, 1]]
-        u *= (mu_ ** 2.0)
+            out = v * 0
+            op_.apply_kernel(u=u, output=out, adj=True, add=False)
+            out = u - (k_ ** 2) * out * psi_
+            out *= lambda_
 
-        out += u
+            u *= 0
+            u[rec_locs_[:, 0], rec_locs_[:, 1]] = v[rec_locs_[:, 0], rec_locs_[:, 1]]
+            u *= (mu_ ** 2.0)
 
-        return np.reshape(out, newshape=(nz_ * n_,))
+            out += u
 
-    def func_matvec_adj(v):
+            return np.reshape(out, newshape=(nz_ * n_,))
 
-        v1 = np.reshape(v[0:nz_ * n_], newshape=(nz_, n_))
-        u = v1 * 0
-        op_.apply_kernel(u=v1, output=u, adj=True, add=False)
-        u = lambda_ * np.reshape(v1 - (k_ ** 2) * u * psi_, newshape=(nz_ * n_,))
+        def func_matvec_adj(v):
 
-        v1 *= 0
-        v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_ * n_:]
-        v1 = np.reshape(v1, newshape=(nz_ * n_,))
+            v1 = np.reshape(v[0:nz_ * n_], newshape=(nz_, n_))
+            u = v1 * 0
+            op_.apply_kernel(u=v1, output=u, adj=True, add=False)
+            u = lambda_ * np.reshape(v1 - (k_ ** 2) * u * psi_, newshape=(nz_ * n_,))
 
-        return u + v1
+            v1 *= 0
+            v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_ * n_:]
+            v1 = np.reshape(v1, newshape=(nz_ * n_,))
 
-    linop_normal_op = LinearOperator(
-        shape=(nz_ * n_, nz_ * n_),
-        matvec=func_normal_op,
-        dtype=precision_
-    )
+            return u + v1
 
-    temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
-    op_.apply_kernel(u=source_[num_source_, :, :], output=temp_)
-    temp_ = lambda_ * np.reshape(temp_, newshape=(nz_ * n_,))
+        linop_normal_op = LinearOperator(
+            shape=(nz_ * n_, nz_ * n_),
+            matvec=func_normal_op,
+            dtype=precision_
+        )
 
-    temp1_ = true_data_[num_source_, :, :]
-    temp1_ = np.reshape(mu_ * temp1_[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
+        temp_ = np.zeros(shape=(nz_, n_), dtype=precision_)
+        op_.apply_kernel(u=source_[num_source_, :, :], output=temp_)
+        temp_ = lambda_ * np.reshape(temp_, newshape=(nz_ * n_,))
 
-    temp2_ = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
-    temp2_[0:nz_ * n_] = temp_
-    temp2_[nz_ * n_:] = temp1_
+        temp1_ = true_data_[num_source_, :, :]
+        temp1_ = np.reshape(mu_ * temp1_[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
 
-    rhs_ = func_matvec_adj(v=temp2_)
-    rhs_ -= func_normal_op(
-        v=np.reshape(wavefield_[num_source_, :, :], newshape=(nz_ * n_,))
-    )
+        temp2_ = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
+        temp2_[0:nz_ * n_] = temp_
+        temp2_[nz_ * n_:] = temp1_
 
-    rhs_scale_ = np.linalg.norm(rhs_)
-    if rhs_scale_ < 1e-15:
-        rhs_scale_ = 1.0
-    rhs_ = rhs_ / rhs_scale_
+        rhs_ = func_matvec_adj(v=temp2_)
+        rhs_ -= func_normal_op(
+            v=np.reshape(wavefield_[num_source_, :, :], newshape=(nz_ * n_,))
+        )
 
-    del temp_, temp1_, temp2_
+        rhs_scale_ = np.linalg.norm(rhs_)
+        if rhs_scale_ < 1e-15:
+            rhs_scale_ = 1.0
+        rhs_ = rhs_ / rhs_scale_
 
-    # ------------------------------------------------------
-    # Solve for solution
-    start_t_ = time.time()
-    sol_, exit_code_ = cg(
-            linop_normal_op,
-            rhs_,
-            atol=0,
-            tol=btol_,
-            maxiter=max_iter_
-    )
+        del temp_, temp1_, temp2_
 
-    wavefield_[num_source_, :, :] += np.reshape(sol_ * rhs_scale_, newshape=(nz_, n_))
-    end_t_ = time.time()
-    print(
-        "Shot num = ", num_source_,
-        ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
-        ", exit code = ", exit_code_
-    )
+        # ------------------------------------------------------
+        # Solve for solution
+        start_t_ = time.time()
+        sol_, exit_code_ = cg(
+                linop_normal_op,
+                rhs_,
+                atol=0,
+                tol=btol_,
+                maxiter=max_iter_
+        )
+
+        wavefield_[num_source_, :, :] += np.reshape(sol_ * rhs_scale_, newshape=(nz_, n_))
+        end_t_ = time.time()
+        print(
+            "Shot num = ", num_source_,
+            ", Total time to solve: ", "{:4.2f}".format(end_t_ - start_t_), " s",
+            ", exit code = ", exit_code_
+        )
 
     # ------------------------------------------------------
     # Release shared memory
