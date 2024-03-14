@@ -23,7 +23,7 @@ if __name__ == "__main__":
     num_iter = int(sys.argv[1])
     num_outer_iter = int(sys.argv[2])
     mnorm = float(sys.argv[3])
-    num_procs = min(obj.num_sources, mp.cpu_count(), 30)
+    num_procs = min(obj.num_sources, mp.cpu_count(), 40)
 
     lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32)
     mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32)
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     obj.perform_inversion_update_wavefield_model_pert(
         iter_count=num_iter, num_outer_iter=num_outer_iter,
         lambda_arr=lambda_arr, mu_arr=mu_arr,
-        max_iter=40, solver="cg", atol=1e-5, btol=1e-5,
+        max_iter=40, solver="lsmr", atol=1e-5, btol=1e-5,
         max_iter1=5, tol=1e-5, mnorm=mnorm, use_bounds=True,
         num_procs=num_procs, clean=True
     )
