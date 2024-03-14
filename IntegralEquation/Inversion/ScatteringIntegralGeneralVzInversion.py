@@ -1321,53 +1321,53 @@ class ScatteringIntegralGeneralVzInversion2d:
                         with np.load(true_data_filename) as f:
                             true_data += f["arr_0"]
 
-                    param_tuple_list = [
-                        (
-                            self._n,
-                            self._nz,
-                            self._a,
-                            self._b,
-                            self._k_values[k],
-                            self._vz,
-                            self._m,
-                            self._sigma_greens_func,
-                            self._precision,
-                            self._precision_real,
-                            self.__greens_func_filedir(num_k=k),
-                            self._num_sources,
-                            rec_locs,
-                            i,
-                            np.sqrt(lambda_arr[k, i]),
-                            np.sqrt(mu_arr[k, i]),
-                            sm_greens_func.name,
-                            sm_source.name,
-                            sm_wavefield.name,
-                            sm_true_data.name,
-                            sm_pert.name,
-                            max_iter,
-                            solver,
-                            atol,
-                            btol
-                        ) for i in range(self._num_sources) if lambda_arr[k, i] != 0.0 or mu_arr[k, i] != 0.0
-                    ]
+                        param_tuple_list = [
+                            (
+                                self._n,
+                                self._nz,
+                                self._a,
+                                self._b,
+                                self._k_values[k],
+                                self._vz,
+                                self._m,
+                                self._sigma_greens_func,
+                                self._precision,
+                                self._precision_real,
+                                self.__greens_func_filedir(num_k=k),
+                                self._num_sources,
+                                rec_locs,
+                                i,
+                                np.sqrt(lambda_arr[k, i]),
+                                np.sqrt(mu_arr[k, i]),
+                                sm_greens_func.name,
+                                sm_source.name,
+                                sm_wavefield.name,
+                                sm_true_data.name,
+                                sm_pert.name,
+                                max_iter,
+                                solver,
+                                atol,
+                                btol
+                            ) for i in range(self._num_sources) if lambda_arr[k, i] != 0.0 or mu_arr[k, i] != 0.0
+                        ]
 
-                    if len(param_tuple_list) >= 1:
+                        if len(param_tuple_list) >= 1:
 
-                        if solver in ["lsqr", "lsmr"]:
-                            with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                                max_ = len(param_tuple_list)
+                            if solver in ["lsqr", "lsmr"]:
+                                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                                    max_ = len(param_tuple_list)
 
-                                with tqdm(total=max_) as pbar:
-                                    for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
-                                        pbar.update()
+                                    with tqdm(total=max_) as pbar:
+                                        for _ in pool.imap_unordered(helperclass2d.update_wavefield, param_tuple_list):
+                                            pbar.update()
 
-                        if solver == "cg":
-                            with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
-                                max_ = len(param_tuple_list)
+                            if solver == "cg":
+                                with Pool(min(len(param_tuple_list), mp.cpu_count(), num_procs)) as pool:
+                                    max_ = len(param_tuple_list)
 
-                                with tqdm(total=max_) as pbar:
-                                    for _ in pool.imap_unordered(helperclass2d.update_wavefield_cg, param_tuple_list):
-                                        pbar.update()
+                                    with tqdm(total=max_) as pbar:
+                                        for _ in pool.imap_unordered(helperclass2d.update_wavefield_cg, param_tuple_list):
+                                            pbar.update()
 
                     # Write computed wavefield to disk
                     np.savez_compressed(self.__wavefield_filename(iter_count=iter_count, num_k=k), wavefield)

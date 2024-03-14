@@ -916,7 +916,8 @@ def perform_inversion_update_pert(
                 print("\n---------------------------------------------")
                 print("Starting k number ", k_)
 
-                if np.sum(lambda_arr[k, :]) > 0.0:
+                if np.sum(lambda_arr[k_, :]) > 0.0:
+
                     # Load Green's func into shared memory
                     green_func_filename_ = obj.greens_func_filename(num_k=k_)
                     with np.load(green_func_filename_) as f_:
