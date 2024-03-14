@@ -38,6 +38,6 @@ if __name__ == "__main__":
         iter_count=num_iter, num_outer_iter=num_outer_iter,
         lambda_arr=lambda_arr, mu_arr=mu_arr,
         max_iter=40, solver="lsmr", atol=1e-5, btol=1e-5,
-        max_iter1=5, tol=1e-5, mnorm=mnorm, use_bounds=True,
+        max_iter1=5, tol=1e-5, mnorm=mnorm, use_bounds=False,
         num_procs=num_procs, clean=True
     )
