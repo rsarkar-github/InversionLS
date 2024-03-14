@@ -26,7 +26,7 @@ if __name__ == "__main__":
     num_procs = min(obj.num_sources, mp.cpu_count(), 40)
 
     lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1.0
-    mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 1000.0
+    mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32) + 0.01
 
     obj.perform_inversion_update_wavefield_model_pert(
         iter_count=num_iter, num_outer_iter=num_outer_iter,
