@@ -12,7 +12,7 @@ if __name__ == "__main__":
         basedir=basedir,
         restart=True,
         restart_code=None,
-        check_iter_files=False, #TODO change
+        check_iter_files=True,
         num_procs_check_iter_files=num_procs
     )
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32)
     mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32)
 
-    for k in range(int(obj.num_k_values / 7.0) + 1):
+    for k in range(int(obj.num_k_values / 14.0) + 1):
         lambda_arr[k, :] = 1.0
         mu_arr[k, :] = 1.0
 
@@ -38,6 +38,6 @@ if __name__ == "__main__":
         iter_count=num_iter, num_outer_iter=num_outer_iter,
         lambda_arr=lambda_arr, mu_arr=mu_arr,
         max_iter=40, solver="cg", atol=1e-5, btol=1e-5,
-        max_iter1=5, tol=1e-5, mnorm=mnorm, use_bounds=False,
+        max_iter1=5, tol=1e-5, mnorm=mnorm, use_bounds=True,
         num_procs=num_procs, clean=True
     )
