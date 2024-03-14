@@ -12,4 +12,4 @@ cd ../../../..
 
 #python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p09_perform_update 7 40 0.000001
 #python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p09_perform_update 8 40 0.000001
-python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p09_perform_update 9 40 0.000001
+python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.p09_perform_update 9 40 0.0000001
