@@ -32,7 +32,7 @@ if __name__ == "__main__":
         lambda_arr[k, :] = 1.0
         mu_arr[k, :] = 1.0
 
-    mu_arr *= 1
+    mu_arr *= 0.0001
 
     obj.perform_inversion_update_wavefield_model_pert(
         iter_count=num_iter, num_outer_iter=num_outer_iter,
