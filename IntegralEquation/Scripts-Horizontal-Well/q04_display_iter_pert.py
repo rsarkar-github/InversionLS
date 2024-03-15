@@ -91,8 +91,8 @@ if __name__ == "__main__":
         aspect_ratio=aspect, aspect_cbar=10, file_name=None, vmin=2.5, vmax=6.0
     )
 
-    # scale = np.max(np.abs(pert_true)) / 2
-    scale = np.max(np.abs(pert_true))
+    scale = np.max(np.abs(pert_true)) / 2
+    # scale = np.max(np.abs(pert_true))
 
     plot1(
         vel=pert_true, extent=extent, title="True pert", vmin=-scale, vmax=scale,
@@ -105,5 +105,10 @@ if __name__ == "__main__":
 
     plot1(
         vel=pert-pert1, extent=extent, title="Inverted pert[iter] - Inverted pert[iter-1]",
+        aspect_ratio=aspect, aspect_cbar=10, file_name=None
+    )
+
+    plot1(
+        vel=pert - pert_true, extent=extent, title="Inverted pert[iter] - Inverted pert[iter-1]",
         aspect_ratio=aspect, aspect_cbar=10, file_name=None
     )
