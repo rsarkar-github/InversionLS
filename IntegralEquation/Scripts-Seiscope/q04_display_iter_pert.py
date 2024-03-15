@@ -6,6 +6,7 @@ from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralG
 
 
 def plot1(vel, extent, title, aspect_ratio=1, aspect_cbar=10, file_name=None, vmin=None, vmax=None):
+
     if vmin is None:
         vmin = np.min(vel)
     if vmax is None:
@@ -13,6 +14,28 @@ def plot1(vel, extent, title, aspect_ratio=1, aspect_cbar=10, file_name=None, vm
 
     plt.figure(figsize=(6, 3))  # define figure size
     plt.imshow(vel, cmap="jet", interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
+
+    cbar = plt.colorbar(aspect=aspect_cbar, pad=0.02)
+    cbar.set_label('Vp [km/s]', labelpad=10)
+    plt.title(title)
+    plt.xlabel('x [m]')
+    plt.ylabel('z [m]')
+    plt.gca().set_aspect(aspect_ratio)
+
+    if file_name is not None:
+        plt.savefig(file_name, format="pdf", bbox_inches="tight", pad_inches=0.01)
+
+    plt.show()
+
+
+def plot2(vel, extent, title, aspect_ratio=1, aspect_cbar=10, file_name=None, vmin=None, vmax=None):
+
+    if vmin is None and vmax is None:
+        vmin = -np.max(np.abs(vel))
+        vmax = np.max(np.abs(vel))
+
+    plt.figure(figsize=(6, 3))  # define figure size
+    plt.imshow(vel, cmap="seismic", interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
 
     cbar = plt.colorbar(aspect=aspect_cbar, pad=0.02)
     cbar.set_label('Vp [km/s]', labelpad=10)
@@ -86,14 +109,13 @@ if __name__ == "__main__":
         aspect_ratio=aspect, aspect_cbar=10, file_name=None, vmin=2.5, vmax=6.0
     )
 
-    # scale = np.max(np.abs(pert_true)) / 5.0
     scale = np.max(np.abs(pert_true))
 
-    plot1(
+    plot2(
         vel=pert_true, extent=extent, title="True pert", vmin=-scale, vmax=scale,
         aspect_ratio=aspect, aspect_cbar=10, file_name=None
     )
-    plot1(
+    plot2(
         vel=pert, extent=extent, title="Inverted pert",
         aspect_ratio=aspect, aspect_cbar=10, file_name=None
     )
