@@ -43,7 +43,7 @@ if __name__ == "__main__":
     num_threads = 10
 
     # Set receiver locs
-    rec_locs = [(1, i) for i in range(0, nx)]
+    rec_locs = [(nz - 2, i) for i in range(0, nx)]
 
     params = {
         "geometry": {
