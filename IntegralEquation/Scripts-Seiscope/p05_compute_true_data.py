@@ -19,7 +19,7 @@ if __name__ == "__main__":
     print("Compute true data...")
     print("\n")
 
-    num_procs = min(obj.num_sources, mp.cpu_count(), 30)
+    num_procs = min(obj.num_sources, mp.cpu_count(), 40)
     max_iter = 5000
     tol = 1e-5
     verbose = False
