@@ -28,7 +28,7 @@ if __name__ == "__main__":
     lambda_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32)
     mu_arr = np.zeros(shape=(obj.num_k_values, obj.num_sources), dtype=np.float32)
 
-    for k in range(int(obj.num_k_values / 14.0) + 1):
+    for k in range(int(obj.num_k_values / 7.0) + 1):
         lambda_arr[k, :] = 1.0
         mu_arr[k, :] = 1.0
 
