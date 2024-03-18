@@ -4,9 +4,8 @@
 #SBATCH --error=p01_.%j.err
 #SBATCH --time=1:00:00
 #SBATCH -p cpu
-#SBATCH -n 1
+#SBATCH --ntasks=1
 #SBATCH -c 32
-#SBATCH --mem=32GB
 
 echo "hostname: " $HOSTNAME
 
