@@ -8,6 +8,8 @@
 #SBATCH -c 32
 #SBATCH --mem=32GB
 
+echo "hostname: " $HOSTNAME
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 cd ~
