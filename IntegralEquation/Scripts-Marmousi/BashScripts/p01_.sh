@@ -9,15 +9,8 @@
 
 echo "hostname: " $HOSTNAME
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-
-echo $SCRIPT_DIR
-
-cd ~
+cd /home/research/rsarkar/Research
 source .bashrc
 conda activate py39
-
-cd $SCRIPT_DIR
-cd ../../../..
 
 python -m InversionLS.IntegralEquation.Scripts-Marmousi.p01_create_params_jsonfile
