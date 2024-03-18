@@ -9,8 +9,8 @@
 
 echo "hostname: " $HOSTNAME
 
-cd /home/research/rsarkar/Research
-source .bashrc
+source ~/.bashrc
 conda activate py39
+cd /home/research/rsarkar/Research
 
 python -m InversionLS.IntegralEquation.Scripts-Marmousi.p01_create_params_jsonfile
