@@ -2,7 +2,7 @@
 #SBATCH --job-name=p02_
 #SBATCH --output=p02_.%j.out
 #SBATCH --error=p02_.%j.err
-#SBATCH --time=1:00:00
+#SBATCH --time=24:00:00
 #SBATCH -p cpu
 #SBATCH --ntasks=1
 #SBATCH -c 4

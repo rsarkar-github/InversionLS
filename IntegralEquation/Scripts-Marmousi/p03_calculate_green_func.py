@@ -1,5 +1,4 @@
 from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
-import multiprocessing as mp
 
 
 if __name__ == "__main__":
@@ -10,8 +9,6 @@ if __name__ == "__main__":
         restart=True,
         restart_code=2
     )
-
-    print(mp.cpu_count())
 
     print("\n\n---------------------------------------------")
     print("---------------------------------------------")
