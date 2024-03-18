@@ -61,7 +61,7 @@ if __name__ == "__main__":
     dz = (b - a) / (nz - 1)
     std = 2 * dx
 
-    num_sources = 71
+    num_sources = 36
     xgrid = np.linspace(start=-0.5, stop=0.5, num=num_sources, endpoint=True)
     zval = 1 * dz
     source_coords = np.zeros(shape=(num_sources, 2), dtype=np.float32)
