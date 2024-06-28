@@ -10,7 +10,9 @@ if __name__ == "__main__":
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
         restart=True,
-        restart_code=None
+        restart_code=None,
+        check_iter_files=True,
+        num_procs_check_iter_files=16
     )
 
     print("Num k values = ", obj.num_k_values, ", Num sources = ", obj.num_sources)
@@ -46,12 +48,12 @@ if __name__ == "__main__":
     plt.ylabel(r'$z$ [km]')
     plt.show()
 
-    # plt.imshow(np.real(data - data_true), cmap="Greys", extent=extent, aspect=aspect, vmin=-scale, vmax=scale)
-    # plt.xlabel(r'$x_1$ [km]')
-    # plt.ylabel(r'$z$ [km]')
-    # plt.show()
-
-    plt.imshow(np.real(data - data_true), cmap="Greys", extent=extent, aspect=aspect)
+    plt.imshow(np.real(data - data_true), cmap="Greys", extent=extent, aspect=aspect, vmin=-scale, vmax=scale)
     plt.xlabel(r'$x_1$ [km]')
     plt.ylabel(r'$z$ [km]')
     plt.show()
+
+    # plt.imshow(np.real(data - data_true), cmap="Greys", extent=extent, aspect=aspect)
+    # plt.xlabel(r'$x_1$ [km]')
+    # plt.ylabel(r'$z$ [km]')
+    # plt.show()
