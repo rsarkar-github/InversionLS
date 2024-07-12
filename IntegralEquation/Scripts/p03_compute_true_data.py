@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     sol_recs_ = np.zeros(shape=(len(rec_locs_), 1), dtype=precision_)
     for i in range(len(rec_locs_)):
-        sol_recs_[i, 1] = sol_[rec_locs_[i][0], rec_locs_[i][1]]
+        sol_recs_[i, 0] = sol_[rec_locs_[i][0], rec_locs_[i][1]]
 
     # ----------------------------------------------
     # Save files
