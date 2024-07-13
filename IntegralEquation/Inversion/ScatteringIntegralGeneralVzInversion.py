@@ -739,7 +739,7 @@ class ScatteringIntegralGeneralVzInversion2d:
         :param max_iter: int
             Maximum number of iterations allowed by lsqr / lsmr
         :param solver: str
-            Solver name (lsqr or lsmr)
+            Solver name (cg or lsqr or lsmr)
         :param atol: float
             atol for lsqr / lsmr
         :param btol: float
