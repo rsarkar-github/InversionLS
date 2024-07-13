@@ -208,53 +208,53 @@ if __name__ == "__main__":
     rhs1_[nz_ * n_:] = rec_data_
     rhs_ = rhs1_
 
-    # if solver_name == "lsqr":
-    #
-    #     print("----------------------------------------------")
-    #     print("Solver: LSQR \n")
-    #
-    #     tol_ = 1e-5
-    #
-    #     start_t = time.time()
-    #     sol_, istop, itn_, r1norm = lsqr(
-    #         linop_lse,
-    #         np.reshape(rhs_, newshape=(nz_ * n_ + num_recs_, 1)),
-    #         atol=1e-5,
-    #         btol=tol_,
-    #         show=True,
-    #         iter_lim=50000
-    #     )[:4]
-    #     sol_ = np.reshape(sol_, newshape=(nz_, n_))
-    #     end_t = time.time()
-    #     print("Total iterations: ", itn_)
-    #     print("Total time to solve: ", "{:4.2f}".format(end_t - start_t), " s \n")
-    #
-    #     total_iter = itn_
-    #     tsolve = end_t - start_t
-    #
-    # if solver_name == "lsmr":
-    #
-    #     print("----------------------------------------------")
-    #     print("Solver: LSMR \n")
-    #
-    #     tol_ = 1e-5
-    #
-    #     start_t = time.time()
-    #     sol_, istop, itn_, r1norm = lsmr(
-    #         linop_lse,
-    #         np.reshape(rhs_, newshape=(nz_ * n_ + num_recs_, 1)),
-    #         atol=1e-5,
-    #         btol=tol_,
-    #         show=True,
-    #         maxiter=50000
-    #     )[:4]
-    #     sol_ = np.reshape(sol_, newshape=(nz_, n_))
-    #     end_t = time.time()
-    #     print("Total iterations: ", itn_)
-    #     print("Total time to solve: ", "{:4.2f}".format(end_t - start_t), " s \n")
-    #
-    #     total_iter = itn_
-    #     tsolve = end_t - start_t
+    if solver_name == "lsqr":
+
+        print("----------------------------------------------")
+        print("Solver: LSQR \n")
+
+        tol_ = 1e-5
+
+        start_t = time.time()
+        sol_, istop, itn_, r1norm = lsqr(
+            linop_lse,
+            np.reshape(rhs_, newshape=(nz_ * n_ + num_recs_, 1)),
+            atol=1e-5,
+            btol=tol_,
+            show=True,
+            iter_lim=50000
+        )[:4]
+        sol_ = np.reshape(sol_, newshape=(nz_, n_))
+        end_t = time.time()
+        print("Total iterations: ", itn_)
+        print("Total time to solve: ", "{:4.2f}".format(end_t - start_t), " s \n")
+
+        total_iter = itn_
+        tsolve = end_t - start_t
+
+    if solver_name == "lsmr":
+
+        print("----------------------------------------------")
+        print("Solver: LSMR \n")
+
+        tol_ = 1e-5
+
+        start_t = time.time()
+        sol_, istop, itn_, r1norm = lsmr(
+            linop_lse,
+            np.reshape(rhs_, newshape=(nz_ * n_ + num_recs_, 1)),
+            atol=1e-5,
+            btol=tol_,
+            show=True,
+            maxiter=50000
+        )[:4]
+        sol_ = np.reshape(sol_, newshape=(nz_, n_))
+        end_t = time.time()
+        print("Total iterations: ", itn_)
+        print("Total time to solve: ", "{:4.2f}".format(end_t - start_t), " s \n")
+
+        total_iter = itn_
+        tsolve = end_t - start_t
 
     sol_ = np.zeros(newshape=(nz_, n_), dtype=precision_)
     total_iter = 100
