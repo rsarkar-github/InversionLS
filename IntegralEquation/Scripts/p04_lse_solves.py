@@ -12,12 +12,13 @@ if __name__ == "__main__":
     # ----------------------------------------------
     # Check arguments and read in parameters
     # ----------------------------------------------
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         raise ValueError("Program missing command line arguments.")
 
     model_mode = int(sys.argv[1])
     freq_mode = int(sys.argv[2])
     solver_mode = int(sys.argv[3])
+    mu_mode = int(sys.argv[4])
 
     if model_mode == 0:
         filepath = "InversionLS/Data/sigsbee-new-vz-2d.npz"
@@ -65,6 +66,15 @@ if __name__ == "__main__":
         solver_name = "lsmr"
     else:
         raise ValueError("solver mode = ", solver_mode, " is not supported. Must be 1 or 2.")
+
+    if mu_mode == 0:
+        mu_ = 1.0
+    elif mu_mode == 1:
+        mu_ = 5.0
+    elif mu_mode == 2:
+        mu_ = 10.0
+    else:
+        raise ValueError("mu mode = ", mu_mode, " is not supported. Must be 0, 1 or 2.")
 
     # ----------------------------------------------
     # Load vz and calculate psi
@@ -163,7 +173,6 @@ if __name__ == "__main__":
     # ----------------------------------------------
     # Initialize linear operator objects
     # ----------------------------------------------
-    mu_ = 1.0
 
     def func_matvec(v):
         v = np.reshape(v, newshape=(nz_, n_))
@@ -262,13 +271,19 @@ if __name__ == "__main__":
     # ----------------------------------------------
     # Save files
     # ----------------------------------------------
-    savefig_fname = filepath5_ + "sol-" + solver_name + "-" + "{:4.2f}".format(freq) + ".pdf"
+    savefig_fname = (filepath5_ + "sol-" + solver_name +
+                     "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".pdf")
     plt.savefig(savefig_fname, format="pdf", bbox_inches="tight", pad_inches=0.01)
-    np.savez(filepath4_ + "sol-" + solver_name + "-" + "{:4.2f}".format(freq) + ".npz", sol_)
+
+    np.savez(filepath4_ + "sol-" + solver_name +
+             "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".npz", sol_)
 
     file_data = {}
     file_data["niter"] = total_iter
     file_data["tsolve"] = "{:4.2f}".format(tsolve)
 
-    with open(filepath4_ + "stats-" + solver_name + "-" + "{:4.2f}".format(freq) + ".json", "w") as file:
+    with open(
+            filepath4_ + "stats-" + solver_name +
+            "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".json", "w"
+    ) as file:
         json.dump(file_data, file, indent=4)
