@@ -256,10 +256,6 @@ if __name__ == "__main__":
         total_iter = itn_
         tsolve = end_t - start_t
 
-    sol_ = np.zeros(newshape=(nz_, n_), dtype=precision_)
-    total_iter = 100
-    tsolve = 1.0
-
     plt.imshow(np.real(sol_), cmap="Greys")
     plt.show()
 
