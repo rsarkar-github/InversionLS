@@ -68,7 +68,7 @@ if __name__ == "__main__":
         raise ValueError("solver mode = ", solver_mode, " is not supported. Must be 1 or 2.")
 
     if mu_mode == 0:
-        mu_ = 10000000.0
+        mu_ = 1.0
     elif mu_mode == 1:
         mu_ = 5.0
     elif mu_mode == 2:
@@ -259,7 +259,7 @@ if __name__ == "__main__":
 
     sol_ = np.reshape(sol_, newshape=(nz_helmholtz_, n_helmholtz_))
     sol_ = sol_[pml_cells: pml_cells + nz_, pml_cells: pml_cells + n_]
-    plt.imshow(np.real(sol_), cmap="Greys", vmin=-1e-6, vmax=1e-6)
+    plt.imshow(np.real(sol_), cmap="Greys", vmin=-1e-5, vmax=1e-5)
     plt.show()
 
     # ----------------------------------------------
