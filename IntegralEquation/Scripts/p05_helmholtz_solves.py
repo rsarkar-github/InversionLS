@@ -275,8 +275,8 @@ if __name__ == "__main__":
              "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".npz", sol_)
 
     file_data = {}
-    file_data["niter"] = total_iter
-    file_data["tsolve"] = "{:4.2f}".format(tsolve)
+    # file_data["niter"] = total_iter
+    # file_data["tsolve"] = "{:4.2f}".format(tsolve)
 
     with open(
             filepath4_ + "stats-" + solver_name +
