@@ -174,15 +174,31 @@ if __name__ == "__main__":
 
     def func_matvec(v):
         u = mat.dot(v)
-        return u
+        v = np.reshape(v, newshape=(nz_helmholtz_, n_helmholtz_))
+        u1 = mu_ * np.reshape(v[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
+
+        out = np.zeros(shape=(nz_helmholtz_ * n_helmholtz_ + num_recs_,), dtype=precision_)
+        out[0:nz_helmholtz_ * n_helmholtz_] = u
+        out[nz_helmholtz_ * n_helmholtz_:] = u1
+
+        return out
 
     def func_matvec_adj(v):
-        u = matH.dot(v)
+
+        v1 = np.reshape(v[0:nz_helmholtz_ * n_helmholtz_], newshape=(nz_helmholtz_ * n_helmholtz_,))
+        u = matH.dot(v1)
         return u
 
+        # v1 *= 0
+        # v1 = np.reshape(v1, newshape=(nz_helmholtz_, n_helmholtz_))
+        # v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_helmholtz_ * n_helmholtz_:]
+        # v1 = np.reshape(v1, newshape=(nz_helmholtz_ * n_helmholtz_,))
+        #
+        # return u + v1
 
-    linop_helmholtz = LinearOperator(
-        shape=(nz_helmholtz_ * n_helmholtz_, nz_helmholtz_ * n_helmholtz_),
+
+    linop_lse = LinearOperator(
+        shape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, nz_helmholtz_ * n_helmholtz_),
         matvec=func_matvec,
         rmatvec=func_matvec_adj,
         dtype=precision_
@@ -192,7 +208,11 @@ if __name__ == "__main__":
     # Run solver iterations
     # ----------------------------------------------
     sou_helmholtz_ = np.reshape(sou_helmholtz_, newshape=(nz_helmholtz_ * n_helmholtz_,))
-    rhs_ = sou_helmholtz_
+    rec_data_ = np.reshape(rec_data_, newshape=(num_recs_,))
+    rhs1_ = np.zeros(shape=(nz_helmholtz_ * n_helmholtz_ + num_recs_,), dtype=precision_)
+    rhs1_[0:nz_helmholtz_ * n_helmholtz_] = sou_helmholtz_
+    rhs1_[nz_helmholtz_ * n_helmholtz_:] = mu_ * rec_data_
+    rhs_ = rhs1_
 
     if solver_name == "lsqr":
 
@@ -203,8 +223,8 @@ if __name__ == "__main__":
 
         start_t = time.time()
         sol_, istop, itn_, r1norm = lsqr(
-            linop_helmholtz,
-            np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_, 1)),
+            linop_lse,
+            np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=tol_,
             btol=tol_,
             show=True,
@@ -227,8 +247,8 @@ if __name__ == "__main__":
 
         start_t = time.time()
         sol_, istop, itn_, r1norm = lsmr(
-            linop_helmholtz,
-            np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_, 1)),
+            linop_lse,
+            np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=tol_,
             btol=tol_,
             show=True,
