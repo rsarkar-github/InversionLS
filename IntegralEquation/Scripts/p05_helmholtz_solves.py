@@ -222,7 +222,7 @@ if __name__ == "__main__":
         start_t = time.time()
         sol_, istop, itn_, r1norm = lsqr(
             mat,
-            np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_, 1)),
+            np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=1e-5,
             btol=tol_,
             show=True,
@@ -246,7 +246,7 @@ if __name__ == "__main__":
         start_t = time.time()
         sol_, istop, itn_, r1norm = lsmr(
             mat,
-            np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_, 1)),
+            np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=1e-5,
             btol=tol_,
             show=True,
