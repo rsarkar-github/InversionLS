@@ -68,7 +68,7 @@ if __name__ == "__main__":
         raise ValueError("solver mode = ", solver_mode, " is not supported. Must be 1 or 2.")
 
     if mu_mode == 0:
-        mu_ = 1.0
+        mu_ = 10000000000.0
     elif mu_mode == 1:
         mu_ = 5.0
     elif mu_mode == 2:
@@ -192,7 +192,7 @@ if __name__ == "__main__":
         return u + v1
 
 
-    linop_lse = LinearOperator(
+    linop_helm = LinearOperator(
         shape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, nz_helmholtz_ * n_helmholtz_),
         matvec=func_matvec,
         rmatvec=func_matvec_adj,
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     rhs1_[nz_helmholtz_ * n_helmholtz_:] = mu_ * rec_data_
     rhs_ = rhs1_
 
-    if solver_name == "lsqr1":
+    if solver_name == "lsqr":
 
         print("----------------------------------------------")
         print("Solver: LSQR \n")
@@ -218,7 +218,7 @@ if __name__ == "__main__":
 
         start_t = time.time()
         sol_, istop, itn_, r1norm = lsqr(
-            linop_lse,
+            linop_helm,
             np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=tol_,
             btol=0,
@@ -233,7 +233,7 @@ if __name__ == "__main__":
         total_iter = itn_
         tsolve = end_t - start_t
 
-    if solver_name == "lsmr1":
+    if solver_name == "lsmr":
 
         print("----------------------------------------------")
         print("Solver: LSMR \n")
@@ -242,7 +242,7 @@ if __name__ == "__main__":
 
         start_t = time.time()
         sol_, istop, itn_, r1norm = lsmr(
-            linop_lse,
+            linop_helm,
             np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=tol_,
             btol=0,
@@ -257,8 +257,6 @@ if __name__ == "__main__":
         total_iter = itn_
         tsolve = end_t - start_t
 
-    sol_ = np.reshape(rhs_[0:nz_helmholtz_ * n_helmholtz_], newshape=(nz_helmholtz_, n_helmholtz_))
-    sol_[rec_locs_[:, 0], rec_locs_[:, 1]] = rec_data_
     sol_ = np.reshape(sol_, newshape=(nz_helmholtz_, n_helmholtz_))
     sol_ = sol_[pml_cells: pml_cells + nz_, pml_cells: pml_cells + n_]
     plt.imshow(np.real(sol_), cmap="Greys", vmin=-1e-4, vmax=1e-4)
@@ -275,8 +273,8 @@ if __name__ == "__main__":
              "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".npz", sol_)
 
     file_data = {}
-    # file_data["niter"] = total_iter
-    # file_data["tsolve"] = "{:4.2f}".format(tsolve)
+    file_data["niter"] = total_iter
+    file_data["tsolve"] = "{:4.2f}".format(tsolve)
 
     with open(
             filepath4_ + "stats-" + solver_name +
