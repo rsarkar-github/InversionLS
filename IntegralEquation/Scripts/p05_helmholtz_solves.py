@@ -68,11 +68,11 @@ if __name__ == "__main__":
         raise ValueError("solver mode = ", solver_mode, " is not supported. Must be 1 or 2.")
 
     if mu_mode == 0:
-        mu_ = 100000000.0
+        mu_ = 1000000.0
     elif mu_mode == 1:
-        mu_ = 5.0
+        mu_ = 5000000.0
     elif mu_mode == 2:
-        mu_ = 10.0
+        mu_ = 10000000.0
     else:
         raise ValueError("mu mode = ", mu_mode, " is not supported. Must be 0, 1 or 2.")
 
