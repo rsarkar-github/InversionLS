@@ -185,12 +185,9 @@ if __name__ == "__main__":
 
     def func_matvec_adj(v):
 
-        v1 = np.reshape(v[0:nz_helmholtz_ * n_helmholtz_], newshape=(nz_helmholtz_ * n_helmholtz_,))
-        u = matH.dot(v1)
-
-        v1 *= 0
-        v1 = np.reshape(v1, newshape=(nz_helmholtz_, n_helmholtz_))
-        # v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_helmholtz_ * n_helmholtz_:]
+        u = matH.dot(v[0:nz_helmholtz_ * n_helmholtz_])
+        v1 = np.zeros(shape=(nz_helmholtz_, n_helmholtz_), dtype=precision_)
+        v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_helmholtz_ * n_helmholtz_:]
         v1 = np.reshape(v1, newshape=(nz_helmholtz_ * n_helmholtz_,))
 
         return u + v1
