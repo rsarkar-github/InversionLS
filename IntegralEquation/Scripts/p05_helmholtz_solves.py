@@ -68,7 +68,7 @@ if __name__ == "__main__":
         raise ValueError("solver mode = ", solver_mode, " is not supported. Must be 1 or 2.")
 
     if mu_mode == 0:
-        mu_ = 1000000.0
+        mu_ = 1.0
     elif mu_mode == 1:
         mu_ = 5.0
     elif mu_mode == 2:
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     rhs1_[nz_helmholtz_ * n_helmholtz_:] = mu_ * rec_data_
     rhs_ = rhs1_
 
-    if solver_name == "lsqr":
+    if solver_name == "lsqr1":
 
         print("----------------------------------------------")
         print("Solver: LSQR \n")
@@ -233,7 +233,7 @@ if __name__ == "__main__":
         total_iter = itn_
         tsolve = end_t - start_t
 
-    if solver_name == "lsmr":
+    if solver_name == "lsmr1":
 
         print("----------------------------------------------")
         print("Solver: LSMR \n")
@@ -257,6 +257,8 @@ if __name__ == "__main__":
         total_iter = itn_
         tsolve = end_t - start_t
 
+    sol_ = np.reshape(rhs_[0:nz_helmholtz_ * n_helmholtz_], newshape=(nz_helmholtz_, n_helmholtz_))
+    sol_[rec_locs_[:, 0], rec_locs_[:, 1]] = rec_data_
     sol_ = np.reshape(sol_, newshape=(nz_helmholtz_, n_helmholtz_))
     sol_ = sol_[pml_cells: pml_cells + nz_, pml_cells: pml_cells + n_]
     plt.imshow(np.real(sol_), cmap="Greys", vmin=-1e-4, vmax=1e-4)
