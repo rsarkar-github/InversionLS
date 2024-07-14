@@ -259,7 +259,9 @@ if __name__ == "__main__":
 
     rhs_ = rhs_[0:nz_helmholtz_ * n_helmholtz_]
     sol_ = np.reshape(rhs_, newshape=(nz_helmholtz_, n_helmholtz_))
+    print(np.linalg.norm(sol_))
     sol_ = sol_[pml_cells: pml_cells + nz_, pml_cells: pml_cells + n_]
+    print(np.linalg.norm(sol_))
     plt.imshow(np.real(sol_), cmap="Greys", vmin=-1e-4, vmax=1e-4)
     plt.show()
 
