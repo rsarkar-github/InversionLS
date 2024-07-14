@@ -225,7 +225,7 @@ if __name__ == "__main__":
             linop_lse,
             np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=tol_,
-            btol=0.0,
+            btol=tol_,
             show=True,
             iter_lim=50000
         )[:4]
@@ -249,7 +249,7 @@ if __name__ == "__main__":
             linop_lse,
             np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=tol_,
-            btol=0.0,
+            btol=tol_,
             show=True,
             maxiter=50000
         )[:4]
