@@ -214,7 +214,7 @@ if __name__ == "__main__":
     rec_data_ = np.reshape(rec_data_, newshape=(num_recs_,))
     rhs1_ = np.zeros(shape=(nz_ * n_ + num_recs_,), dtype=precision_)
     rhs1_[0:nz_ * n_] = rhs_
-    rhs1_[nz_ * n_:] = rec_data_
+    rhs1_[nz_ * n_:] = mu_ * rec_data_
     rhs_ = rhs1_
 
     if solver_name == "lsqr":
