@@ -205,7 +205,7 @@ if __name__ == "__main__":
     sou_helmholtz_ = np.reshape(sou_helmholtz_, newshape=(nz_helmholtz_ * n_helmholtz_,))
     rec_data_ = np.reshape(rec_data_, newshape=(num_recs_,))
     rhs1_ = np.zeros(shape=(nz_helmholtz_ * n_helmholtz_ + num_recs_,), dtype=precision_)
-    rhs1_[0:nz_helmholtz_ * n_helmholtz_] = sou_helmholtz_
+    rhs1_[0:nz_helmholtz_ * n_helmholtz_] = sou_helmholtz_ * 0
     rhs1_[nz_helmholtz_ * n_helmholtz_:] = mu_ * rec_data_
     rhs_ = rhs1_
 
