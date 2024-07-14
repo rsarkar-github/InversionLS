@@ -262,6 +262,7 @@ if __name__ == "__main__":
     print(np.linalg.norm(sol_))
     sol_ = sol_[pml_cells: pml_cells + nz_, pml_cells: pml_cells + n_]
     print(np.linalg.norm(sol_))
+    print(np.linalg.norm(rec_data_))
     plt.imshow(np.real(sol_), cmap="Greys", vmin=-1e-4, vmax=1e-4)
     plt.show()
 
