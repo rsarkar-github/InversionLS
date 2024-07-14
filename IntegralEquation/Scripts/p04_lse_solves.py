@@ -228,8 +228,8 @@ if __name__ == "__main__":
         sol_, istop, itn_, r1norm = lsqr(
             linop_lse,
             np.reshape(rhs_, newshape=(nz_ * n_ + num_recs_, 1)),
-            atol=1e-5,
-            btol=tol_,
+            atol=tol_,
+            btol=0,
             show=True,
             iter_lim=50000
         )[:4]
@@ -252,8 +252,8 @@ if __name__ == "__main__":
         sol_, istop, itn_, r1norm = lsmr(
             linop_lse,
             np.reshape(rhs_, newshape=(nz_ * n_ + num_recs_, 1)),
-            atol=1e-5,
-            btol=tol_,
+            atol=tol_,
+            btol=0,
             show=True,
             maxiter=50000
         )[:4]
