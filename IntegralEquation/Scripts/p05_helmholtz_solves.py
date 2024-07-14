@@ -266,11 +266,11 @@ if __name__ == "__main__":
     # Save files
     # ----------------------------------------------
     savefig_fname = (filepath5_ + "sol-" + solver_name +
-                     "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".pdf")
+                     "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_/1e6) + ".pdf")
     plt.savefig(savefig_fname, format="pdf", bbox_inches="tight", pad_inches=0.01)
 
     np.savez(filepath4_ + "sol-" + solver_name +
-             "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".npz", sol_)
+             "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_/1e6) + ".npz", sol_)
 
     file_data = {}
     file_data["niter"] = total_iter
@@ -278,6 +278,6 @@ if __name__ == "__main__":
 
     with open(
             filepath4_ + "stats-" + solver_name +
-            "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".json", "w"
+            "-" + "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_/1e6) + ".json", "w"
     ) as file:
         json.dump(file_data, file, indent=4)
