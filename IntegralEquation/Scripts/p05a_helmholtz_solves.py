@@ -174,12 +174,12 @@ if __name__ == "__main__":
 
     def func_matvec(v):
         u = mat.dot(v)
-        v = np.reshape(v, newshape=(nz_helmholtz_, n_helmholtz_))
-        u1 = mu_ * np.reshape(v[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
+        # v = np.reshape(v, newshape=(nz_helmholtz_, n_helmholtz_))
+        # u1 = mu_ * np.reshape(v[rec_locs_[:, 0], rec_locs_[:, 1]], newshape=(num_recs_,))
 
         out = np.zeros(shape=(nz_helmholtz_ * n_helmholtz_ + num_recs_,), dtype=precision_)
         out[0:nz_helmholtz_ * n_helmholtz_] = u
-        out[nz_helmholtz_ * n_helmholtz_:] = u1
+        # out[nz_helmholtz_ * n_helmholtz_:] = u1
 
         return out
 
@@ -187,13 +187,14 @@ if __name__ == "__main__":
 
         v1 = np.reshape(v[0:nz_helmholtz_ * n_helmholtz_], newshape=(nz_helmholtz_ * n_helmholtz_,))
         u = matH.dot(v1)
+        return u
 
-        v1 *= 0
-        v1 = np.reshape(v1, newshape=(nz_helmholtz_, n_helmholtz_))
-        v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_helmholtz_ * n_helmholtz_:]
-        v1 = np.reshape(v1, newshape=(nz_helmholtz_ * n_helmholtz_,))
-
-        return u + v1
+        # v1 *= 0
+        # v1 = np.reshape(v1, newshape=(nz_helmholtz_, n_helmholtz_))
+        # v1[rec_locs_[:, 0], rec_locs_[:, 1]] = mu_ * v[nz_helmholtz_ * n_helmholtz_:]
+        # v1 = np.reshape(v1, newshape=(nz_helmholtz_ * n_helmholtz_,))
+        #
+        # return u + v1
 
 
     linop_lse = LinearOperator(
@@ -210,7 +211,7 @@ if __name__ == "__main__":
     rec_data_ = np.reshape(rec_data_, newshape=(num_recs_,))
     rhs1_ = np.zeros(shape=(nz_helmholtz_ * n_helmholtz_ + num_recs_,), dtype=precision_)
     rhs1_[0:nz_helmholtz_ * n_helmholtz_] = sou_helmholtz_
-    rhs1_[nz_helmholtz_ * n_helmholtz_:] = mu_ * rec_data_
+    # rhs1_[nz_helmholtz_ * n_helmholtz_:] = mu_ * rec_data_
     rhs_ = rhs1_
 
     if solver_name == "lsqr":
