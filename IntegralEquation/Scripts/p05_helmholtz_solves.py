@@ -221,7 +221,7 @@ if __name__ == "__main__":
             linop_lse,
             np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=tol_,
-            btol=0,
+            btol=tol_,
             show=True,
             iter_lim=50000
         )[:4]
@@ -245,7 +245,7 @@ if __name__ == "__main__":
             linop_lse,
             np.reshape(rhs_, newshape=(nz_helmholtz_ * n_helmholtz_ + num_recs_, 1)),
             atol=tol_,
-            btol=0,
+            btol=tol_,
             show=True,
             maxiter=50000
         )[:4]
@@ -256,10 +256,6 @@ if __name__ == "__main__":
 
         total_iter = itn_
         tsolve = end_t - start_t
-
-    print(np.linalg.norm(sou_helmholtz_))
-    print(np.linalg.norm(rec_data_))
-    print(np.linalg.norm(sol_))
 
     sol_ = sol_[pml_cells: pml_cells + nz_, pml_cells: pml_cells + n_]
     plt.imshow(np.real(sol_), cmap="Greys")
