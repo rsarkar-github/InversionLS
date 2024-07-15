@@ -93,11 +93,9 @@ if __name__ == "__main__":
 
         extent = [0, lenx / 1000.0, lenz / 1000.0, 0]
         plt.figure(figsize=(12, 3))  # define figure size
-        plt.imshow(vel, cmap="jet", interpolation='nearest', extent=extent, vmin=1.5, vmax=4.5)
-        cbar = plt.colorbar(aspect=10, pad=0.02)
-        cbar.set_label('Vp [km/s]', labelpad=10)
+        plt.imshow(data, cmap="Greys", interpolation="none", extent=extent, vmin=-5e-5, vmax=5e-5)
+        plt.imshow(vel, cmap="jet", interpolation='nearest', extent=extent, vmin=1.5, vmax=4.5, alpha=0.25)
 
-        plt.imshow(data, cmap="Greys", interpolation="none", extent=extent, vmin=-5e-6, vmax=5e-6, alpha=0.5)
 
         plt.xlabel(r'$x_1$ [km]')
         plt.ylabel(r'$z$ [km]')
