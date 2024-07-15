@@ -57,10 +57,13 @@ if __name__ == "__main__":
 
     if mu_mode == 0:
         mu_ = 1.0
+        scale = 1e-5
     elif mu_mode == 1:
         mu_ = 5.0
+        scale = 5e-6
     elif mu_mode == 2:
         mu_ = 10.0
+        scale = 1e-6
     else:
         raise ValueError("mu mode = ", mu_mode, " is not supported. Must be 0, 1 or 2.")
 
@@ -89,11 +92,13 @@ if __name__ == "__main__":
     lenx = dx * (n_ - 1)
     lenz = dz * (nz_ - 1)
 
-    def plot(data, vel, fname):
+    def plot(data, vel, fname, scale):
 
         extent = [0, lenx / 1000.0, lenz / 1000.0, 0]
         plt.figure(figsize=(12, 3))  # define figure size
-        plt.imshow(data, cmap="Greys", interpolation="none", extent=extent, vmin=-5e-5, vmax=5e-5)
+        plt.imshow(data, cmap="Greys", interpolation="none", extent=extent, vmin=-scale, vmax=scale)
+        plt.colorbar(aspect=10, pad=0.02)
+
         plt.imshow(vel, cmap="jet", interpolation='nearest', extent=extent, vmin=1.5, vmax=4.5, alpha=0.25)
 
 
