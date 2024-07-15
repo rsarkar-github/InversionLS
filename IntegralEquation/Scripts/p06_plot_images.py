@@ -57,10 +57,10 @@ if __name__ == "__main__":
 
     if mu_mode == 0:
         mu_ = 1.0
-        scale_ = 1e-5
+        scale_ = 5e-5
     elif mu_mode == 1:
         mu_ = 5.0
-        scale_ = 5e-6
+        scale_ = 1e-5
     elif mu_mode == 2:
         mu_ = 10.0
         scale_ = 1e-6
