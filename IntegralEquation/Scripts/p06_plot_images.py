@@ -57,13 +57,13 @@ if __name__ == "__main__":
 
     if mu_mode == 0:
         mu_ = 1.0
-        scale = 1e-5
+        scale_ = 1e-5
     elif mu_mode == 1:
         mu_ = 5.0
-        scale = 5e-6
+        scale_ = 5e-6
     elif mu_mode == 2:
         mu_ = 10.0
-        scale = 1e-6
+        scale_ = 1e-6
     else:
         raise ValueError("mu mode = ", mu_mode, " is not supported. Must be 0, 1 or 2.")
 
@@ -111,4 +111,4 @@ if __name__ == "__main__":
 
     savefig_fname_sol = (filepath5_ + "sol-" + solver_name + "-" +
                          "{:4.2f}".format(freq) + "-mu" + "{:4.2f}".format(mu_) + ".pdf")
-    plot(data=np.real(data_sol), vel=vel, fname=savefig_fname_sol)
+    plot(data=np.real(data_sol), vel=vel, fname=savefig_fname_sol, scale=scale_)
