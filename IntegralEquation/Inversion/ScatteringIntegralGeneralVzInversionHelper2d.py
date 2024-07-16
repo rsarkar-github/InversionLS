@@ -611,7 +611,7 @@ def update_wavefield_cg(params):
     # ------------------------------------------------------
     # Inversion
 
-    if lambda_ != 0.0 or mu_ == 0.0:
+    if lambda_ != 0.0 or mu_ != 0.0:
 
         # ------------------------------------------------------
         # Define linear operator objects
