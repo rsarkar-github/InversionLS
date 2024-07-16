@@ -1815,7 +1815,7 @@ class ScatteringIntegralGeneralVzInversion2d:
             num_bytes *= 8
 
         return num_bytes
-    
+
     def __compute_obj1(self, iter_count):
 
         print("\n\n---------------------------------------------")
