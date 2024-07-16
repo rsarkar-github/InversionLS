@@ -74,13 +74,12 @@ if __name__ == "__main__":
                        borderpad=0)
     cbar = fig.colorbar(im, cax=axins)
     cbar.ax.set_title("km/s")
-    # cbar.set_label('Vp [km/s]', labelpad=3)
 
+    fig.canvas.manager.full_screen_toggle()
 
-    plt.savefig(
+    fig.savefig(
         basedir + "Fig/q01_vz_true_source_overlay.pdf",
         format="pdf",
-        bbox_inches="tight",
         pad_inches=0.01
     )
     plt.show()
@@ -88,7 +87,20 @@ if __name__ == "__main__":
     # -----------------------------------------
     # Plot v(z) velocity as trace
     # -----------------------------------------
-
+    zcoords = [dz * i for i in range(obj.nz)]
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(obj.vz, zcoords, "-r", markersize=4, linewidth=2)
+    ax.set_ylabel('z [km]')
+    ax.set_xlabel('Vp [km/s]')
+    ax.invert_yaxis()
+    ax.grid()
+    ax.set_aspect(100)
+    fig.savefig(
+        basedir + "Fig/q01_vz_true_1d.pdf",
+        format="pdf",
+        pad_inches=0.01
+    )
+    plt.show()
 
     # -----------------------------------------
     # Plot perturbation and dv
@@ -121,8 +133,14 @@ if __name__ == "__main__":
             cbar.ax.set_title(label_cbar)
             # cbar.set_label(label_cbar, labelpad=3)
 
+        fig.canvas.manager.full_screen_toggle()
+
         if file_name is not None:
-            plt.savefig(file_name, format="pdf", bbox_inches="tight", pad_inches=0.01)
+            fig.savefig(
+                file_name,
+                format="pdf",
+                pad_inches=0.01
+            )
 
         plt.show()
 
