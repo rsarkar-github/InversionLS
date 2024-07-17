@@ -1,6 +1,5 @@
 # Run from within this directory
 
-
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 cd ~
@@ -10,4 +9,4 @@ conda activate py39
 cd $SCRIPT_DIR
 cd ../../../..
 
-python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well-1.p06a_perform_update 0 20
+python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.q02_display_results_tikhreg_bounds
