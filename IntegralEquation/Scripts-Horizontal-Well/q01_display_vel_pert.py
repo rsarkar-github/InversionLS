@@ -65,12 +65,13 @@ if __name__ == "__main__":
     # -----------------------------------------
 
     figsize = (11, 4)
+    fontsize = 14
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     im = ax.imshow(vz_2d, aspect=4, cmap="jet", interpolation='bicubic', extent=extent, vmin=2.5, vmax=6.0)
     ax.scatter(source_coords[:, 1], source_coords[:, 0], s=2, c="k", marker="x")
-    ax.set_xlabel('x [km]')
-    ax.set_ylabel('z [km]')
+    ax.set_xlabel('x [km]', fontsize=fontsize)
+    ax.set_ylabel('z [km]', fontsize=fontsize)
 
     axins = inset_axes(ax, width="3%", height="100%", loc='lower left',
                        bbox_to_anchor=(1.02, 0., 1, 1), bbox_transform=ax.transAxes,
@@ -91,8 +92,8 @@ if __name__ == "__main__":
     zcoords = [dz * i for i in range(obj.nz)]
     fig, ax = plt.subplots(1, 1)
     ax.plot(obj.vz, zcoords, "-r", markersize=4, linewidth=2)
-    ax.set_ylabel('z [km]')
-    ax.set_xlabel('Vp [km/s]')
+    ax.set_ylabel('z [km]', fontsize=fontsize)
+    ax.set_xlabel('Vp [km/s]', fontsize=fontsize)
     ax.invert_yaxis()
     ax.grid()
     ax.set_aspect(100)
@@ -123,8 +124,8 @@ if __name__ == "__main__":
         im = ax.imshow(vel, aspect=aspect_ratio, cmap=cmap, interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
 
         ax.set_title(title)
-        ax.set_xlabel('x [km]')
-        ax.set_ylabel('z [km]')
+        ax.set_xlabel('x [km]', fontsize=fontsize)
+        ax.set_ylabel('z [km]', fontsize=fontsize)
 
         if show_cbar:
             axins = inset_axes(ax, width="3%", height="100%", loc='lower left',
