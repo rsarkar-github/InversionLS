@@ -7,6 +7,10 @@ from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralG
 
 if __name__ == "__main__":
 
+    backend = matplotlib.get_backend()
+    if backend == "agg":
+        matplotlib.use('TkAgg')
+
     basedir = "InversionLS/Expt/horizontal-well/"
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
@@ -133,8 +137,7 @@ if __name__ == "__main__":
             cbar = fig.colorbar(im, cax=axins)
             cbar.ax.set_title(label_cbar)
 
-        backend = matplotlib.get_backend()
-        if backend == "agg":
+        if backend == "TkAgg":
             manager = plt.get_current_fig_manager()
             manager.resize(*manager.window.maxsize())
 
