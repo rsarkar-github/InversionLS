@@ -1,15 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
 
 
 if __name__ == "__main__":
-
-    backend = matplotlib.get_backend()
-    if backend == "agg":
-        matplotlib.use('TkAgg')
 
     basedir = "InversionLS/Expt/horizontal-well/"
     obj = ScatteringIntegralGeneralVzInversion2d(
@@ -59,7 +54,7 @@ if __name__ == "__main__":
     # Read velocity v(z), true model pert
     # ------------------------------------
     vz_2d = np.zeros(shape=(obj.nz, obj.n), dtype=np.float32)
-    vz_2d = obj.vz
+    vz_2d += obj.vz
     psi = obj.true_model_pert
     vel = ((1 / (vz_2d ** 2.0)) - psi) ** (-0.5)
     dv = vz_2d - vel
@@ -68,7 +63,10 @@ if __name__ == "__main__":
     # -----------------------------------------
     # Plot v(z) velocity with source locations
     # -----------------------------------------
-    fig, ax = plt.subplots(1, 1)
+
+    figsize = (11, 4)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     im = ax.imshow(vz_2d, aspect=4, cmap="jet", interpolation='bicubic', extent=extent, vmin=2.5, vmax=6.0)
     ax.scatter(source_coords[:, 1], source_coords[:, 0], s=2, c="k", marker="x")
     ax.set_xlabel('x [km]')
@@ -79,8 +77,6 @@ if __name__ == "__main__":
                        borderpad=0)
     cbar = fig.colorbar(im, cax=axins)
     cbar.ax.set_title("km/s")
-
-    fig.canvas.manager.full_screen_toggle()
 
     fig.savefig(
         basedir + "Fig/q01_vz_true_source_overlay.pdf",
@@ -112,7 +108,7 @@ if __name__ == "__main__":
     # -----------------------------------------
     def plot1(
             vel, extent, title,
-            aspect_ratio=1, cmap="jet",
+            aspect_ratio=1, cmap="jet", figsize=(16, 9),
             show_cbar=True,
             label_cbar="",
             file_name=None, vmin=None, vmax=None
@@ -123,7 +119,7 @@ if __name__ == "__main__":
         if vmax is None:
             vmax = np.max(vel)
 
-        fig, ax = plt.subplots(1, 1)
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
         im = ax.imshow(vel, aspect=aspect_ratio, cmap=cmap, interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
 
         ax.set_title(title)
@@ -136,16 +132,6 @@ if __name__ == "__main__":
                                borderpad=0)
             cbar = fig.colorbar(im, cax=axins)
             cbar.ax.set_title(label_cbar)
-
-        if backend == "TkAgg":
-            manager = plt.get_current_fig_manager()
-            manager.resize(*manager.window.maxsize())
-
-        if backend == "QtAgg":
-            manager = plt.get_current_fig_manager()
-            manager.window.showMaximized()
-
-        # fig.canvas.manager.full_screen_toggle()
 
         if file_name is not None:
             fig.savefig(
@@ -163,6 +149,7 @@ if __name__ == "__main__":
         title="",
         aspect_ratio=4,
         cmap="seismic",
+        figsize=figsize,
         file_name= basedir + "Fig/q01_vel_true_pert.pdf",
         label_cbar="km/s",
         vmin=-0.06,
@@ -175,6 +162,7 @@ if __name__ == "__main__":
         title="",
         aspect_ratio=4,
         cmap="seismic",
+        figsize=figsize,
         file_name=basedir + "Fig/q01_true_psi.pdf",
         label_cbar=r"$s^2 / km^2$",
         vmin=-0.006,
