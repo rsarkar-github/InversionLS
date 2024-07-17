@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
 
@@ -131,9 +132,17 @@ if __name__ == "__main__":
                                borderpad=0)
             cbar = fig.colorbar(im, cax=axins)
             cbar.ax.set_title(label_cbar)
-            # cbar.set_label(label_cbar, labelpad=3)
 
-        fig.canvas.manager.full_screen_toggle()
+        backend = matplotlib.get_backend()
+        if backend == "agg":
+            manager = plt.get_current_fig_manager()
+            manager.resize(*manager.window.maxsize())
+
+        if backend == "QtAgg":
+            manager = plt.get_current_fig_manager()
+            manager.window.showMaximized()
+
+        # fig.canvas.manager.full_screen_toggle()
 
         if file_name is not None:
             fig.savefig(
