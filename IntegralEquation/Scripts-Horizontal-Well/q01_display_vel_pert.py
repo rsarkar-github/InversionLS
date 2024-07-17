@@ -11,6 +11,7 @@ if __name__ == "__main__":
         basedir=basedir,
         restart=True,
         restart_code=None,
+        check_iter_files=False,
         num_procs_check_iter_files=4
     )
 
@@ -95,6 +96,8 @@ if __name__ == "__main__":
     ax.set_ylabel('z [km]', fontsize=fontsize)
     ax.set_xlabel('Vp [km/s]', fontsize=fontsize)
     ax.invert_yaxis()
+    ax.set_xlim((0, 6))
+    ax.set_ylim((zmax, 0))
     ax.grid()
     ax.set_aspect(100)
     fig.savefig(

@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
+from IntegralEquation.Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
 import multiprocessing as mp
 
 
