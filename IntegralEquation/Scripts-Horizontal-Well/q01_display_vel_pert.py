@@ -196,13 +196,16 @@ if __name__ == "__main__":
     k_vals = np.asarray(obj.k_values)
     freq = (k_vals / scale_fac_inv) / (2 * np.pi)
 
-    plt.plot(freq, amplitude_list, "-r*")
-    plt.xlabel(r"$\omega / 2\pi$ [Hz]", fontname="STIXGeneral", fontsize=fontsize)
-    plt.ylabel(r"$a(\omega)$", fontname="STIXGeneral", fontsize=fontsize)
-    plt.grid()
-    plt.savefig(
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(freq, amplitude_list, "-r*")
+    ax.set_xlabel(r"$\omega / 2\pi$   [Hz]", fontname="STIXGeneral", fontsize=fontsize)
+    ax.set_ylabel(r"$a(\omega)$", fontname="STIXGeneral", fontsize=fontsize)
+    ax.grid()
+    ax.set_aspect(10)
+    fig.savefig(
         basedir + "Fig/q01_spectra.pdf",
         format="pdf",
+        bbox_inches="tight",
         pad_inches=0.01
     )
     plt.show()
