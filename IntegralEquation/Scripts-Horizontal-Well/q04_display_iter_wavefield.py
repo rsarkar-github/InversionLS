@@ -29,8 +29,13 @@ if __name__ == "__main__":
     num_iter = int(sys.argv[3])
 
     data = obj.get_inverted_wavefield(iter_count=num_iter, num_k=num_k_val, num_source=num_source)
+    data_true = obj.get_true_wavefield(num_k=num_k_val, num_source=num_source)
 
     output_filename = (basedir + "Fig/q04_iter_wavefield_"
+                                + "k_num_" + str(num_k_val)
+                                + "_sou_num_" + str(num_source)
+                                + "_iter_num_" + str(num_iter) + "_.pdf")
+    output_filename_residual = (basedir + "Fig/q04_iter_wavefield_residual_"
                        + "k_num_" + str(num_k_val)
                        + "_sou_num_" + str(num_source)
                        + "_iter_num_" + str(num_iter) + "_.pdf")
@@ -64,7 +69,7 @@ if __name__ == "__main__":
     # -----------------------------------------
     figsize = (11, 4)
     fontsize = 14
-    scale = 1e-5
+    scale = 1e-7
 
 
     def plot1(
@@ -125,6 +130,23 @@ if __name__ == "__main__":
         cmap="Greys",
         figsize=figsize,
         file_name=output_filename,
+        show_cbar=False,
+        vmin=-scale*100,
+        vmax=scale*100,
+        show_freq=True,
+        freq=k_vals[num_k_val],
+        show_source=True,
+        sou_coords=source_coords[num_source]
+    )
+
+    plot1(
+        vel=np.real(data - data_true),
+        extent=extent,
+        title="",
+        aspect_ratio=4,
+        cmap="Greys",
+        figsize=figsize,
+        file_name=output_filename_residual,
         show_cbar=False,
         vmin=-scale,
         vmax=scale,
