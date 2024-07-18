@@ -90,7 +90,7 @@ if __name__ == "__main__":
         ax.set_ylabel('z [km]', fontsize=fontsize, fontname="STIXGeneral")
 
         if show_source is True:
-            ax.scatter(sou_coords[1], sou_coords[0], s=10, c="r", marker="o")
+            ax.scatter(sou_coords[1], sou_coords[0], s=25, c="r", marker="x")
 
         if show_freq is True:
             textstr = r"$\frac{\omega}{2 \pi} = $" + "{:4.1f}".format(freq)
