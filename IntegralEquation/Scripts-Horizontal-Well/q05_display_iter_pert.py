@@ -61,7 +61,11 @@ if __name__ == "__main__":
             aspect_ratio=1, cmap="jet", figsize=(16, 9),
             show_cbar=True,
             label_cbar="",
-            file_name=None, vmin=None, vmax=None
+            file_name=None, vmin=None, vmax=None,
+            show_iter=False,
+            iter_num=None,
+            show_source=False,
+            sou_coords=None
     ):
 
         if vmin is None:
@@ -76,6 +80,14 @@ if __name__ == "__main__":
         ax.set_title(title)
         ax.set_xlabel('x [km]', fontsize=fontsize, fontname="STIXGeneral")
         ax.set_ylabel('z [km]', fontsize=fontsize, fontname="STIXGeneral")
+
+        if show_source is True:
+            ax.scatter(sou_coords[1], sou_coords[0], s=25, c="r", marker="x")
+
+        if show_iter is True:
+            textstr = "Iter set = " + str(iter_num)
+            props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+            ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
 
         if show_cbar:
             axins = inset_axes(ax, width="3%", height="100%", loc='lower left',
@@ -106,5 +118,7 @@ if __name__ == "__main__":
         file_name=output_filename,
         label_cbar=r"[$s^2 / km^2$]",
         vmin=-scale,
-        vmax=scale
+        vmax=scale,
+        show_iter=True,
+        iter_num=num_iter
     )
