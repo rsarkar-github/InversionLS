@@ -102,7 +102,7 @@ if __name__ == "__main__":
         plt.imshow(vel, cmap="jet", interpolation='nearest', extent=extent, vmin=1.5, vmax=4.5, alpha=0.25)
 
 
-        plt.xlabel(r'$x_1$ [km]')
+        plt.xlabel(r'$x$ [km]')
         plt.ylabel(r'$z$ [km]')
 
         plt.savefig(fname, format="pdf", bbox_inches="tight", pad_inches=0.01)
