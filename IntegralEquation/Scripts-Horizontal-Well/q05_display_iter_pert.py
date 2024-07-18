@@ -94,7 +94,7 @@ if __name__ == "__main__":
         plt.show()
 
 
-    scale = 1e-3
+    scale = 0.006
 
     plot1(
         vel=pert,
