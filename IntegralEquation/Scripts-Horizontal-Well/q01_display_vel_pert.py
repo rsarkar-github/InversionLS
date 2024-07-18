@@ -24,6 +24,7 @@ if __name__ == "__main__":
     extent = [0, xmax * scale_fac_inv, zmax * scale_fac_inv, 0]
     dx = xmax * scale_fac_inv / (obj.n - 1)
     dz = zmax * scale_fac_inv / (obj.nz - 1)
+    num_k_vals = obj.num_k_values
 
     print("--------------------------------------------")
     print("Printing model parameters and acquisition\n")
@@ -71,14 +72,14 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     im = ax.imshow(vz_2d, aspect=4, cmap="jet", interpolation='bicubic', extent=extent, vmin=2.5, vmax=6.0)
     ax.scatter(source_coords[:, 1], source_coords[:, 0], s=2, c="k", marker="x")
-    ax.set_xlabel('x [km]', fontsize=fontsize)
-    ax.set_ylabel('z [km]', fontsize=fontsize)
+    ax.set_xlabel('x [km]', fontsize=fontsize, fontname="STIXGeneral")
+    ax.set_ylabel('z [km]', fontsize=fontsize, fontname="STIXGeneral")
 
     axins = inset_axes(ax, width="3%", height="100%", loc='lower left',
                        bbox_to_anchor=(1.02, 0., 1, 1), bbox_transform=ax.transAxes,
                        borderpad=0)
     cbar = fig.colorbar(im, cax=axins)
-    cbar.ax.set_title("km/s")
+    cbar.ax.set_title("[km/s]", fontname="STIXGeneral")
 
     fig.savefig(
         basedir + "Fig/q01_vz_true_source_overlay.pdf",
@@ -93,8 +94,8 @@ if __name__ == "__main__":
     zcoords = [dz * i for i in range(obj.nz)]
     fig, ax = plt.subplots(1, 1)
     ax.plot(obj.vz, zcoords, "-r", markersize=4, linewidth=2)
-    ax.set_ylabel('z [km]', fontsize=fontsize)
-    ax.set_xlabel('Vp [km/s]', fontsize=fontsize)
+    ax.set_ylabel('z [km]', fontsize=fontsize, fontname="STIXGeneral")
+    ax.set_xlabel('Vp [km/s]', fontsize=fontsize, fontname="STIXGeneral")
     ax.invert_yaxis()
     ax.set_xlim((0, 6))
     ax.set_ylim((zmax, 0))
@@ -127,15 +128,15 @@ if __name__ == "__main__":
         im = ax.imshow(vel, aspect=aspect_ratio, cmap=cmap, interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
 
         ax.set_title(title)
-        ax.set_xlabel('x [km]', fontsize=fontsize)
-        ax.set_ylabel('z [km]', fontsize=fontsize)
+        ax.set_xlabel('x [km]', fontsize=fontsize, fontname="STIXGeneral")
+        ax.set_ylabel('z [km]', fontsize=fontsize, fontname="STIXGeneral")
 
         if show_cbar:
             axins = inset_axes(ax, width="3%", height="100%", loc='lower left',
                                bbox_to_anchor=(1.02, 0., 1, 1), bbox_transform=ax.transAxes,
                                borderpad=0)
             cbar = fig.colorbar(im, cax=axins)
-            cbar.ax.set_title(label_cbar)
+            cbar.ax.set_title(label_cbar, fontname="STIXGeneral")
 
         if file_name is not None:
             fig.savefig(
@@ -155,7 +156,7 @@ if __name__ == "__main__":
         cmap="seismic",
         figsize=figsize,
         file_name= basedir + "Fig/q01_vel_true_pert.pdf",
-        label_cbar="km/s",
+        label_cbar="[km/s]",
         vmin=-0.06,
         vmax=0.06
     )
@@ -168,7 +169,40 @@ if __name__ == "__main__":
         cmap="seismic",
         figsize=figsize,
         file_name=basedir + "Fig/q01_true_psi.pdf",
-        label_cbar=r"$s^2 / km^2$",
+        label_cbar=r"$[s^2 / km^2]$",
         vmin=-0.006,
         vmax=0.006
     )
+
+    # -----------------------------------------
+    # Plot frequency spectra
+    # -----------------------------------------
+
+    # Design amplitudes
+    amplitude_list = np.zeros(shape=(num_k_vals,), dtype=obj.precision_real) + 1.0
+
+    if num_k_vals > 10:
+        fac = 0.1
+        low = 0.1
+
+        n1 = int(num_k_vals * fac)
+        da = (1.0 - 0.1) / (n1 - 1)
+        for i in range(n1):
+            amplitude_list[i] = low + i * da
+
+        for i in range(num_k_vals - 1, num_k_vals - 1 - n1, -1):
+            amplitude_list[i] = low + (num_k_vals - 1 - i) * da
+
+    k_vals = np.asarray(obj.k_values)
+    freq = (k_vals / scale_fac_inv) / (2 * np.pi)
+
+    plt.plot(freq, amplitude_list, "-r*")
+    plt.xlabel(r"$\omega / 2\pi$ [Hz]", fontname="STIXGeneral", fontsize=fontsize)
+    plt.ylabel(r"$a(\omega)$", fontname="STIXGeneral", fontsize=fontsize)
+    plt.grid()
+    plt.savefig(
+        basedir + "Fig/q01_spectra.pdf",
+        format="pdf",
+        pad_inches=0.01
+    )
+    plt.show()

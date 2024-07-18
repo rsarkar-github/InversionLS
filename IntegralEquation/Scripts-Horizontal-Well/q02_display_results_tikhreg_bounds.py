@@ -74,15 +74,15 @@ if __name__ == "__main__":
         im = ax.imshow(vel, aspect=aspect_ratio, cmap=cmap, interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
 
         ax.set_title(title)
-        ax.set_xlabel('x [km]', fontsize=fontsize)
-        ax.set_ylabel('z [km]', fontsize=fontsize)
+        ax.set_xlabel('x [km]', fontsize=fontsize, fontname="STIXGeneral")
+        ax.set_ylabel('z [km]', fontsize=fontsize, fontname="STIXGeneral")
 
         if show_cbar:
             axins = inset_axes(ax, width="3%", height="100%", loc='lower left',
                                bbox_to_anchor=(1.02, 0., 1, 1), bbox_transform=ax.transAxes,
                                borderpad=0)
             cbar = fig.colorbar(im, cax=axins)
-            cbar.ax.set_title(label_cbar)
+            cbar.ax.set_title(label_cbar, fontname="STIXGeneral")
 
         if file_name is not None:
             fig.savefig(
