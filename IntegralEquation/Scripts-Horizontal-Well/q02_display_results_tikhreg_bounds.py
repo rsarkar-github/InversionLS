@@ -103,7 +103,7 @@ if __name__ == "__main__":
         cmap="seismic",
         figsize=figsize,
         file_name= basedir + "Fig/q02_model_pert_no_mnorm_no_bounds.pdf",
-        label_cbar="km/s",
+        label_cbar="[km/s]",
         vmin=-scale,
         vmax=scale
     )
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         cmap="seismic",
         figsize=figsize,
         file_name=basedir + "Fig/q02_model_pert_mnorm_no_bounds.pdf",
-        label_cbar=r"$s^2 / km^2$",
+        label_cbar=r"[$s^2 / km^2$]",
         vmin=-scale,
         vmax=scale
     )
@@ -129,7 +129,7 @@ if __name__ == "__main__":
         cmap="seismic",
         figsize=figsize,
         file_name=basedir + "Fig/q02_model_pert_mnorm_bounds.pdf",
-        label_cbar=r"$s^2 / km^2$",
+        label_cbar=r"[$s^2 / km^2$]",
         vmin=-scale,
         vmax=scale
     )

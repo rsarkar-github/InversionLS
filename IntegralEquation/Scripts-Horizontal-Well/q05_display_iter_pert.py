@@ -2,29 +2,8 @@ import os.path
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralGeneralVzInversion2d
-
-
-def plot1(vel, extent, title, aspect_ratio=1, aspect_cbar=10, file_name=None, vmin=None, vmax=None):
-    if vmin is None:
-        vmin = np.min(vel)
-    if vmax is None:
-        vmax = np.max(vel)
-
-    plt.figure(figsize=(6, 3))  # define figure size
-    plt.imshow(vel, cmap="jet", interpolation='bicubic', extent=extent, vmin=vmin, vmax=vmax)
-
-    cbar = plt.colorbar(aspect=aspect_cbar, pad=0.02)
-    cbar.set_label('Vp [km/s]', labelpad=10)
-    plt.title(title)
-    plt.xlabel('x [m]')
-    plt.ylabel('z [m]')
-    plt.gca().set_aspect(aspect_ratio)
-
-    if file_name is not None:
-        plt.savefig(file_name, format="pdf", bbox_inches="tight", pad_inches=0.01)
-
-    plt.show()
 
 
 if __name__ == "__main__":
@@ -34,81 +13,98 @@ if __name__ == "__main__":
         basedir=basedir,
         restart=True,
         restart_code=None,
-        check_iter_files=True,
-        num_procs_check_iter_files=16
+        check_iter_files=False,
+        num_procs_check_iter_files=4
     )
 
-    print("Num k values = ", obj.num_k_values, ", Num sources = ", obj.num_sources)
+    # ------------------------------------
+    # Read parameters and data to plot
+    # ------------------------------------
 
     # Check arguments
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         raise ValueError("Program missing command line arguments.")
 
     num_iter = int(sys.argv[1])
-    aspect = int(sys.argv[2])
 
-    # Get perturbation, true perturbation, perturbation from one previous iteration
+    # ------------------------------------
+    # Get model parameters
+    # ------------------------------------
+    scale_fac_inv = obj.scale_fac_inv
+    xmax = 1.0
+    zmax = (obj.b - obj.a)
+    extent = [0, xmax * scale_fac_inv, zmax * scale_fac_inv, 0]
+    dx = xmax * scale_fac_inv / (obj.n - 1)
+    dz = zmax * scale_fac_inv / (obj.nz - 1)
+
+    # ------------------------------------
+    # Read model pert
+    # ------------------------------------
     pert_fname = obj.model_pert_filename(iter_count=num_iter)
     with np.load(pert_fname) as f:
         pert = f["arr_0"]
 
+    output_filename = (basedir + "Fig/q05_iter_" + "_iter_num_" + str(num_iter) + "_.pdf")
 
-    pert_fname = obj.model_pert_filename(iter_count=num_iter-1)
-    with np.load(pert_fname) as f:
-        pert1 = f["arr_0"]
+    # -----------------------------------------
+    # Set figsize, fontsize
+    # -----------------------------------------
+    figsize = (12, 4)
+    fontsize = 14
 
-    pert_true = obj.true_model_pert
 
-    # Get vz, true vel
-    vz_fname = os.path.join(basedir, "vp_vz_2d.npz")
-    with np.load(vz_fname) as f:
-        vp_vz = f["arr_0"]
+    # -----------------------------------------
+    # Plot model updates
+    # -----------------------------------------
+    def plot1(
+            vel, extent, title,
+            aspect_ratio=1, cmap="jet", figsize=(16, 9),
+            show_cbar=True,
+            label_cbar="",
+            file_name=None, vmin=None, vmax=None
+    ):
 
-    vp_fname = os.path.join(basedir, "vp_true_2d.npz")
-    with np.load(vp_fname) as f:
-        vp_true = f["arr_0"]
+        if vmin is None:
+            vmin = np.min(vel)
+        if vmax is None:
+            vmax = np.max(vel)
 
-    # Convert to velocity
-    def vel_from_pert(psi):
-        vp = ((1.0 / vp_vz) ** 2.0) - psi
-        vp = (1.0 / vp) ** 0.5
-        return vp
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        im = ax.imshow(vel, aspect=aspect_ratio, cmap=cmap, interpolation='bicubic', extent=extent, vmin=vmin,
+                       vmax=vmax)
 
-    vp_update = vel_from_pert(pert)
+        ax.set_title(title)
+        ax.set_xlabel('x [km]', fontsize=fontsize, fontname="STIXGeneral")
+        ax.set_ylabel('z [km]', fontsize=fontsize, fontname="STIXGeneral")
 
-    # Plotting
-    xmax = 1.0
-    zmax = (obj.b - obj.a)
-    extent = [0, xmax, zmax, 0]
+        if show_cbar:
+            axins = inset_axes(ax, width="3%", height="100%", loc='lower left',
+                               bbox_to_anchor=(1.02, 0., 1, 1), bbox_transform=ax.transAxes,
+                               borderpad=0)
+            cbar = fig.colorbar(im, cax=axins)
+            cbar.ax.set_title(label_cbar, fontname="STIXGeneral")
 
-    plot1(
-        vel = vp_update, extent=extent, title="Vp update",
-        aspect_ratio=aspect, aspect_cbar=10, file_name=None, vmin=2.5, vmax=6.0
-    )
+        if file_name is not None:
+            fig.savefig(
+                file_name,
+                format="pdf",
+                pad_inches=0.01
+            )
 
-    plot1(
-        vel=vp_true, extent=extent, title="Vp true",
-        aspect_ratio=aspect, aspect_cbar=10, file_name=None, vmin=2.5, vmax=6.0
-    )
+        plt.show()
 
-    scale = np.max(np.abs(pert_true)) / 2
-    # scale = np.max(np.abs(pert_true))
 
-    plot1(
-        vel=pert_true, extent=extent, title="True pert", vmin=-scale, vmax=scale,
-        aspect_ratio=aspect, aspect_cbar=10, file_name=None
-    )
-    plot1(
-        vel=pert, extent=extent, title="Inverted pert", vmin=-scale, vmax=scale,
-        aspect_ratio=aspect, aspect_cbar=10, file_name=None
-    )
-
-    plot1(
-        vel=pert-pert1, extent=extent, title="Inverted pert[iter] - Inverted pert[iter-1]",
-        aspect_ratio=aspect, aspect_cbar=10, file_name=None
-    )
+    scale = 1e-3
 
     plot1(
-        vel=pert - pert_true, extent=extent, title="Inverted pert[iter] - Inverted pert[iter-1]",
-        aspect_ratio=aspect, aspect_cbar=10, file_name=None
+        vel=pert,
+        extent=extent,
+        title="",
+        aspect_ratio=4,
+        cmap="seismic",
+        figsize=figsize,
+        file_name=output_filename,
+        label_cbar=r"[$s^2 / km^2$]",
+        vmin=-scale,
+        vmax=scale
     )
