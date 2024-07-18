@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # -----------------------------------------
     figsize = (11, 4)
     fontsize = 14
-    scale = 1e-7
+    scale = 1e-6
 
 
     def plot1(
@@ -131,8 +131,8 @@ if __name__ == "__main__":
         figsize=figsize,
         file_name=output_filename,
         show_cbar=False,
-        vmin=-scale*100,
-        vmax=scale*100,
+        vmin=-scale*10,
+        vmax=scale*10,
         show_freq=True,
         freq=k_vals[num_k_val],
         show_source=True,
