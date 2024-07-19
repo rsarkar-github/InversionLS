@@ -7,6 +7,7 @@ from ..Inversion.ScatteringIntegralGeneralVzInversion import ScatteringIntegralG
 
 if __name__ == "__main__":
 
+
     basedir = "InversionLS/Expt/horizontal-well/"
     obj = ScatteringIntegralGeneralVzInversion2d(
         basedir=basedir,
@@ -27,34 +28,50 @@ if __name__ == "__main__":
     num_iter = int(sys.argv[1])
 
     # ------------------------------------
-    # Get model parameters
+    # Get parameters
     # ------------------------------------
     scale_fac_inv = obj.scale_fac_inv
     xmax = 1.0
     zmax = (obj.b - obj.a)
-    extent = [0, xmax * scale_fac_inv, zmax * scale_fac_inv, 0]
     dx = xmax * scale_fac_inv / (obj.n - 1)
     dz = zmax * scale_fac_inv / (obj.nz - 1)
+    num_k_vals = obj.num_k_values
+    k_vals = np.asarray(obj.k_values) / (2 * np.pi)
+
+    num_sources = obj.num_sources
+    xgrid = np.linspace(start=0, stop=xmax * scale_fac_inv, num=num_sources, endpoint=True)
+    zval = 21 * dz
+    source_coords = np.zeros(shape=(num_sources, 2), dtype=np.float32)
+    source_coords[:, 0] = zval
+    source_coords[:, 1] = xgrid
+
+    extent = [source_coords[0, 1], source_coords[num_sources - 1, 1], k_vals[num_k_vals - 1], k_vals[0]]
 
     # ------------------------------------
-    # Read model pert
+    # Load files
     # ------------------------------------
-    pert_fname = obj.model_pert_filename(iter_count=num_iter)
-    with np.load(pert_fname) as f:
-        pert = f["arr_0"]
+    if num_iter == -1:
+        obj2_fname = obj.obj2_filename(iter_count=-1, iter_step=0)
+        obj1_fname = obj.obj1_filename(iter_count=-1)
 
-    output_filename = (basedir + "Fig/q05_iter_" + "_iter_num_" + str(num_iter) + "_.pdf")
+    else:
+        obj2_fname = obj.obj2_filename(iter_count=num_iter, iter_step=1)
+        obj1_fname = obj.obj1_filename(iter_count=num_iter)
 
-    # -----------------------------------------
-    # Set figsize, fontsize
-    # -----------------------------------------
-    figsize = (12, 4)
+    # ------------------------------------
+    # Plot
+    # ------------------------------------
+    with np.load(obj2_fname) as f:
+        obj2 = f["arr_0"]
+        output_filename_obj2 = basedir + "Fig/q06_obj2_" + "iter_num_" + str(num_iter) + ".pdf"
+
+    with np.load(obj1_fname) as f:
+        obj1 = f["arr_0"]
+        output_filename_obj1 = basedir + "Fig/q06_obj1_" + "iter_num_" + str(num_iter) + ".pdf"
+
+    figsize = (9, 5)
     fontsize = 14
 
-
-    # -----------------------------------------
-    # Plot model updates
-    # -----------------------------------------
     def plot1(
             vel, extent, title,
             aspect_ratio=1, cmap="jet", figsize=(16, 9),
@@ -63,8 +80,6 @@ if __name__ == "__main__":
             file_name=None, vmin=None, vmax=None,
             show_iter=False,
             iter_num=None,
-            show_source=False,
-            sou_coords=None
     ):
 
         if vmin is None:
@@ -73,18 +88,21 @@ if __name__ == "__main__":
             vmax = np.max(vel)
 
         fig, ax = plt.subplots(1, 1, figsize=figsize)
-        im = ax.imshow(vel, aspect=aspect_ratio, cmap=cmap, interpolation='bicubic', extent=extent, vmin=vmin,
-                       vmax=vmax)
+        im = ax.imshow(
+            vel, aspect=aspect_ratio, cmap=cmap, interpolation='bicubic',
+            extent=extent, vmin=vmin, vmax=vmax
+        )
 
         ax.set_title(title)
         ax.set_xlabel('x [km]', fontsize=fontsize, fontname="STIXGeneral")
-        ax.set_ylabel('z [km]', fontsize=fontsize, fontname="STIXGeneral")
-
-        if show_source is True:
-            ax.scatter(sou_coords[1], sou_coords[0], s=25, c="r", marker="x")
+        ax.set_ylabel(r'$\omega / 2 \pi$   [Hz]', fontsize=fontsize, fontname="STIXGeneral")
+        ax.invert_yaxis()
 
         if show_iter is True:
-            textstr = "Iter set = " + str(iter_num)
+            if iter_num == -1:
+                textstr = "Initial"
+            else:
+                textstr = "Iter set = " + str(iter_num)
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
             ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
 
@@ -104,20 +122,36 @@ if __name__ == "__main__":
 
         plt.show()
 
-
-    scale = 0.006
+    scale = 1e-10
+    aspect_ratio = 0.02
 
     plot1(
-        vel=pert,
+        vel=obj1,
         extent=extent,
         title="",
-        aspect_ratio=4,
-        cmap="seismic",
+        aspect_ratio=aspect_ratio,
+        cmap="Greys",
         figsize=figsize,
-        file_name=output_filename,
-        label_cbar=r"[$s^2 / km^2$]",
-        vmin=-scale,
+        file_name=output_filename_obj1,
+        show_cbar=True,
+        vmin=0,
         vmax=scale,
         show_iter=True,
-        iter_num=num_iter
+        iter_num=num_iter,
+    )
+
+    scale = 1e-10
+    plot1(
+        vel=obj2,
+        extent=extent,
+        title="Greys",
+        aspect_ratio=aspect_ratio,
+        cmap="Greys",
+        figsize=figsize,
+        file_name=output_filename_obj2,
+        show_cbar=True,
+        vmin=0,
+        vmax=scale,
+        show_iter=True,
+        iter_num=num_iter,
     )
