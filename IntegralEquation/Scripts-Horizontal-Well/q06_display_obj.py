@@ -94,7 +94,7 @@ if __name__ == "__main__":
         )
 
         ax.set_title(title)
-        ax.set_xlabel('x [km]', fontsize=fontsize, fontname="STIXGeneral")
+        ax.set_xlabel(r'Source $x$ coordinate [km]', fontsize=fontsize, fontname="STIXGeneral")
         ax.set_ylabel(r'$\omega / 2 \pi$   [Hz]', fontsize=fontsize, fontname="STIXGeneral")
         ax.invert_yaxis()
 
