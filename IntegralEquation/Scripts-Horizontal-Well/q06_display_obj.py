@@ -126,7 +126,7 @@ if __name__ == "__main__":
     aspect_ratio = 0.02
 
     plot1(
-        vel=obj1,
+        vel=obj1 / scale,
         extent=extent,
         title="",
         aspect_ratio=aspect_ratio,
@@ -135,14 +135,14 @@ if __name__ == "__main__":
         file_name=output_filename_obj1,
         show_cbar=True,
         vmin=0,
-        vmax=scale,
+        vmax=1,
         show_iter=True,
         iter_num=num_iter,
     )
 
     scale = 1e-10
     plot1(
-        vel=obj2,
+        vel=obj2 / scale,
         extent=extent,
         title="Greys",
         aspect_ratio=aspect_ratio,
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         file_name=output_filename_obj2,
         show_cbar=True,
         vmin=0,
-        vmax=scale,
+        vmax=1,
         show_iter=True,
         iter_num=num_iter,
     )
