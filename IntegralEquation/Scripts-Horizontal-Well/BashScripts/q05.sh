@@ -9,6 +9,7 @@ conda activate py39
 cd $SCRIPT_DIR
 cd ../../../..
 
+python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.q05_display_iter_pert -2
 python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.q05_display_iter_pert 6
 python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.q05_display_iter_pert 9
 python -m InversionLS.IntegralEquation.Scripts-Horizontal-Well.q05_display_iter_pert 11

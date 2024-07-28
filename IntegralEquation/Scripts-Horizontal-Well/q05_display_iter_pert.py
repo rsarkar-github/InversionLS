@@ -39,11 +39,16 @@ if __name__ == "__main__":
     # ------------------------------------
     # Read model pert
     # ------------------------------------
-    pert_fname = obj.model_pert_filename(iter_count=num_iter)
-    with np.load(pert_fname) as f:
-        pert = f["arr_0"]
+    if num_iter == -2:
+        # Load true pert
+        pert = obj.true_model_pert
+        output_filename = (basedir + "Fig/q05_true_pert.pdf")
 
-    output_filename = (basedir + "Fig/q05_iter_" + "_iter_num_" + str(num_iter) + "_.pdf")
+    else:
+        pert_fname = obj.model_pert_filename(iter_count=num_iter)
+        with np.load(pert_fname) as f:
+            pert = f["arr_0"]
+        output_filename = (basedir + "Fig/q05_iter_num_" + str(num_iter) + ".pdf")
 
     # -----------------------------------------
     # Set figsize, fontsize
@@ -84,7 +89,10 @@ if __name__ == "__main__":
             ax.scatter(sou_coords[1], sou_coords[0], s=25, c="r", marker="x")
 
         if show_iter is True:
-            textstr = "Iter set = " + str(iter_num)
+            if iter_num == -2:
+                textstr = r"$\psi^{\text{true}}$"
+            else:
+                textstr = "Iter set = " + str(iter_num)
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
             ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
 
